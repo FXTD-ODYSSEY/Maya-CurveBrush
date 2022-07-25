@@ -1,6 +1,6 @@
-# Maya-CruveBrush
+# Maya-CurveBrush
 
-Tweak NUBRBS Curve Brush 
+Tweak NURBS Curve Brush 
 
 This repo is for learning the Maya Context Tool.
 
