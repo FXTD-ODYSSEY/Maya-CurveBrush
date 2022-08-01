@@ -26,6 +26,7 @@ curveBrushContext::curveBrushContext() : bInStroke(false), bFalloffMode(true)
 
 void curveBrushContext::toolOnSetup(MEvent &event)
 {
+	view = M3dView::active3dView();
 	setHelpString(helpString);
 	QCoreApplication *app = qApp;
 	app->installEventFilter(this);
@@ -97,6 +98,7 @@ MStatus curveBrushContext::doPress(MEvent &event, MHWRender::MUIDrawManager &dra
 	view = M3dView::active3dView();
 	event.getPosition(startPosX, startPosY);
 	fStartBrushSize = mBrushConfig.size();
+	fStartBrushStrength = mBrushConfig.strength();
 
 	return MS::kSuccess;
 }
@@ -121,20 +123,27 @@ MStatus curveBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &draw
 	if (eDragMode == kBrushSize)
 	{
 		MPoint start(startPosX, startPosY);
-		auto delta = MVector(currentPos - start);
-		// NOTE(timmyliang): calculate delta vector
-
+		MVector delta = MVector(currentPos - start);
+		float deltaValue;
+		char info[64];
 		// NOTES(timmyliang): left mouse for size
 		if (event.mouseButton() == MEvent::kLeftMouse)
 		{
-			mBrushConfig.setSize(fStartBrushSize + delta.length());
+			deltaValue = delta.x > 0 ? delta.length() : -delta.length();
+			mBrushConfig.setSize(fStartBrushSize + deltaValue);
+			sprintf(info, "Brush Size: %.2f", mBrushConfig.size());
+			drawMgr.text2d(currentPos, info);
 		}
 		// NOTES(timmyliang): middle mouse for strength
 		else if (event.mouseButton() == MEvent::kMiddleMouse)
 		{
+			deltaValue = delta.y > 0 ? delta.length() : -delta.length();
+			mBrushConfig.setStrength(fStartBrushStrength + deltaValue);
+			sprintf(info, "Brush Strength: %.2f", mBrushConfig.strength());
+			drawMgr.text2d(currentPos, info);
 		}
 
-		drawMgr.line2d(start, MPoint(startPosX, currentPosY - startPosY));
+		drawMgr.line2d(start, MPoint(startPosX, startPosY + mBrushConfig.strength() * 2));
 		drawMgr.circle2d(start, mBrushConfig.size());
 	}
 
@@ -142,81 +151,41 @@ MStatus curveBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &draw
 	return MS::kSuccess;
 }
 
-// MStatus curveBrushContext::drawFeedback(MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context)
-// {
-// 	// to draw the brush ring.
-// 	drawMgr.beginDrawable();
-
-// 	drawMgr.setColor(MColor(1.f, 1.f, 1.f));
-// 	drawMgr.setLineWidth(2.0f);
-// 	drawMgr.circle2d(mBrushCenterScreenPoint, mBrushConfig.size());
-
-// 	drawMgr.endDrawable();
-
-// 	return MS::kSuccess;
-// }
-
-// inline void getSelected()
-// {
-
-// 	MSelectionList selectionList;
-// 	MGlobal::getActiveSelectionList(selectionList);
-// 	MObject mesh;
-// 	selectionList.getDependNode(0, mesh);
-// 	MFnMesh fnMesh(mesh);
-// 	fnMesh.getPoints(meshPoints);
-// 	fnMesh.getPolygonVertices(0, meshIndices);
-// }
-
 MStatus curveBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context)
 {
-	// view = M3dView::active3dView();
-	// view.refresh(false, true);
-	// MSelectionList incomingList, marqueeList;
-
 	short x, y;
 	event.getPosition(x, y);
 	mBrushCenterScreenPoint = MPoint(x, y);
 	auto radius = mBrushConfig.size();
-	// if (bFalloffMode)
-	// {
-	// 	float start_x, start_y, last_x, last_y;
-	// 	// NOTES(timmyliang): get selected objects
-	// 	MGlobal::getActiveSelectionList(incomingList);
-	// 	start_x = x - radius;
-	// 	start_y = y - radius;
-	// 	last_x = x + radius;
-	// 	last_y = y + radius;
-	// 	MGlobal::selectFromScreen(start_x, start_y, last_x, last_y,
-	// 							  MGlobal::kReplaceList,
-	// 							  MGlobal::kWireframeSelectMethod);
-
-	// 	MGlobal::getActiveSelectionList(marqueeList);
-	// 	MGlobal::setActiveSelectionList(incomingList, MGlobal::kReplaceList);
-	// }
 
 	drawMgr.beginDrawable();
-
-
 	if (bFalloffMode)
 	{
 		for (unsigned int index = 0; index < objDagPathArray.length(); ++index)
 		{
 			MPointArray pointArray;
 			MColorArray colorArray;
-			MFnNurbsCurve curveFn( objDagPathArray[index] ); 
-			auto segmentCount = 100;
-			for (unsigned int pointIndex = 0; pointIndex < segmentCount; ++pointIndex){
+			MFnNurbsCurve curveFn(objDagPathArray[index]);
+			unsigned int segmentCount = 100;
+			for (unsigned int pointIndex = 0; pointIndex < segmentCount; ++pointIndex)
+			{
 				MPoint point;
 				auto param = curveFn.findParamFromLength(curveFn.length() * pointIndex / segmentCount);
-				curveFn.getPointAtParam(param,point,MSpace::kWorld);
+				curveFn.getPointAtParam(param, point, MSpace::kWorld);
 				pointArray.append(point);
-				colorArray.append(MColor(std::rand() / double(RAND_MAX), std::rand() / double(RAND_MAX)));
+
+				// NOTE(timmyliang): draw falloff
+				short x_pos, y_pos;
+				view.worldToView(point, x_pos, y_pos);
+				MPoint screenPoint(x_pos, y_pos);
+				auto distance = (mBrushCenterScreenPoint - screenPoint).length();
+				auto field = 1 - distance / radius;
+				// NOTE(timmyliang): transparent
+				colorArray.append(distance > radius ? MColor(0.f) : MColor(field, field, field));
 			}
 
-			// NOTE(timmyliang): draw falloff
 			drawMgr.setLineWidth(12.0f);
-			drawMgr.mesh(MHWRender::MUIDrawManager::kClosedLine , pointArray, NULL, &colorArray);
+			drawMgr.mesh(MHWRender::MUIDrawManager::kClosedLine, pointArray, NULL, &colorArray);
 		}
 	}
 
@@ -225,8 +194,6 @@ MStatus curveBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &
 	drawMgr.circle2d(mBrushCenterScreenPoint, radius);
 
 	drawMgr.endDrawable();
-
-	// printf("x:%d y:%d", x, y);
 	return MS::kSuccess;
 }
 

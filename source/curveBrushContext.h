@@ -30,12 +30,15 @@ const char helpString[] = "Click and drag to draw helix";
 
 struct BrushConfig
 {
-	BrushConfig() : fSize(50.0f){};
+	BrushConfig() : fSize(50.0f), fStrength(25.0f){};
 	float size() const { return fSize; }
-	void setSize(float size) { fSize = size; }
+	void setSize(float value) { fSize = value > 0 ? value : 0; }
+	float strength() const { return fStrength; }
+	void setStrength(float value) { fStrength = value > 0 ? value : 0; }
 
 private:
 	float fSize;
+	float fStrength;
 };
 
 class curveBrushContext : public QObject, public MPxContext
@@ -63,7 +66,6 @@ public:
 					  const MHWRender::MFrameContext &context);
 
 	MStatus doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context);
-	// MStatus drawFeedback(MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context);
 	bool eventFilter(QObject *object, QEvent *event);
 
 	bool doKeyPress(QKeyEvent *event);
@@ -77,19 +79,19 @@ private:
 		kNormal,
 		kBrushSize
 	};
+	DragMode eDragMode;
 	BrushConfig mBrushConfig;
 	MPoint mBrushCenterScreenPoint;
-	DragMode eDragMode;
 	bool bInStroke;
-	bool bFalloffMode;
+	bool bFalloffMode = true;
 	float fStartBrushSize;
+	float fStartBrushStrength;
 
 	MDagPathArray objDagPathArray;
 
 	short startPosX, startPosY;
 	short endPosX, endPosY;
 	M3dView view;
-	// GLdouble height, radius;
 };
 
 #endif
