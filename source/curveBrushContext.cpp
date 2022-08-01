@@ -32,17 +32,17 @@ void curveBrushContext::toolOnSetup(MEvent &event)
 	// NOTE(timmyliang): get current selected the object as handle object
 	MSelectionList activeList;
 	MGlobal::getActiveSelectionList(activeList);
-	meshArray.clear();
-	for (MItSelectionList curveIter(activeList, MFn::kMesh); !curveIter.isDone(); curveIter.next())
+	objDagPathArray.clear();
+	for (MItSelectionList curveIter(activeList, MFn::kNurbsCurve); !curveIter.isDone(); curveIter.next())
 	{
 		MDagPath curDag;
 		MObject curCompObj;
 		curveIter.getDagPath(curDag, curCompObj);
-		meshArray.append(curDag);
+		objDagPathArray.append(curDag);
 	}
-	if (meshArray.length() == 0)
+	if (objDagPathArray.length() == 0)
 	{
-		MGlobal::displayWarning("No mesh selected.");
+		MGlobal::displayWarning("No NURBS Curve selected.");
 	}
 }
 
@@ -173,6 +173,7 @@ MStatus curveBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &
 	// view = M3dView::active3dView();
 	// view.refresh(false, true);
 	// MSelectionList incomingList, marqueeList;
+
 	short x, y;
 	event.getPosition(x, y);
 	mBrushCenterScreenPoint = MPoint(x, y);
@@ -196,39 +197,32 @@ MStatus curveBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &
 
 	drawMgr.beginDrawable();
 
-	drawMgr.setColor(MColor(1.f, 1.f, 1.f));
-	drawMgr.setLineWidth(2.0f);
-	drawMgr.circle2d(mBrushCenterScreenPoint, radius);
 
 	if (bFalloffMode)
 	{
-		for (unsigned int index = 0; index < meshArray.length(); ++index)
+		for (unsigned int index = 0; index < objDagPathArray.length(); ++index)
 		{
-			// MGlobal::displayInfo(meshArray[index].fullPathName());
-			MFloatPointArray pointArray;
-			MFloatVectorArray normalArray;
+			MPointArray pointArray;
 			MColorArray colorArray;
-			MIntArray vertexCount, vertexList;
-			MFnMesh mesh(meshArray[index]);
-
-			mesh.getPoints(pointArray,MSpace::kWorld);
-			mesh.getNormals(normalArray);
-			mesh.getTriangles(vertexCount, vertexList);
-			// NOTE(timmyliang): convert to MUintArray
-			MUintArray vertexUList;
-			for (unsigned int index2 = 0; index2 < vertexList.length(); ++index2)
-				vertexUList.append((unsigned int)vertexList[index2]);
-
-			for (MItMeshVertex vertexIter(meshArray[index]); !vertexIter.isDone(); vertexIter.next())
-			{
+			MFnNurbsCurve curveFn( objDagPathArray[index] ); 
+			auto segmentCount = 100;
+			for (unsigned int pointIndex = 0; pointIndex < segmentCount; ++pointIndex){
+				MPoint point;
+				auto param = curveFn.findParamFromLength(curveFn.length() * pointIndex / segmentCount);
+				curveFn.getPointAtParam(param,point,MSpace::kWorld);
+				pointArray.append(point);
 				colorArray.append(MColor(std::rand() / double(RAND_MAX), std::rand() / double(RAND_MAX)));
 			}
-			// NOTE(timmyliang): draw falloff
-			drawMgr.mesh(MHWRender::MUIDrawManager::kTriStrip, pointArray, &normalArray, &colorArray, &vertexUList);
 
-			// drawMgr.points(pointArray,false);
+			// NOTE(timmyliang): draw falloff
+			drawMgr.setLineWidth(12.0f);
+			drawMgr.mesh(MHWRender::MUIDrawManager::kClosedLine , pointArray, NULL, &colorArray);
 		}
 	}
+
+	drawMgr.setColor(MColor(1.f, 1.f, 1.f));
+	drawMgr.setLineWidth(2.0f);
+	drawMgr.circle2d(mBrushCenterScreenPoint, radius);
 
 	drawMgr.endDrawable();
 

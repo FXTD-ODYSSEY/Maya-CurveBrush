@@ -9,6 +9,7 @@
 #include <maya/MColor.h>
 
 #include <maya/MFnMesh.h>
+#include <maya/MFnNurbsCurve.h>
 #include <maya/MItSelectionList.h>
 #include <maya/MItMeshVertex.h>
 #include <maya/MColorArray.h>
@@ -83,7 +84,7 @@ private:
 	bool bFalloffMode;
 	float fStartBrushSize;
 
-	MDagPathArray meshArray;
+	MDagPathArray objDagPathArray;
 
 	short startPosX, startPosY;
 	short endPosX, endPosY;
