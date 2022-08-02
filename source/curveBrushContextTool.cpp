@@ -33,7 +33,6 @@
 
 #include "curveBrushContextTool.h"
 
-
 /////////////////////////////////////////////////////////////
 // The users tool command
 /////////////////////////////////////////////////////////////
@@ -47,29 +46,20 @@ curveBrushTool::~curveBrushTool() {}
 
 curveBrushTool::curveBrushTool()
 {
-	numCV = 20;
-	upDown = false;
-	setCommandString("helixToolCmd");
+	setCommandString("curveBrushToolCmd");
 }
 
 MSyntax curveBrushTool::newSyntax()
 {
 	MSyntax syntax;
 
-	syntax.addFlag(kPitchFlag, kPitchFlagLong, MSyntax::kDouble);
+	// TODO(timmyliang) specific syntax for the tool command
+	syntax.addFlag(kStrengthFlag, kStrengthFlagLong, MSyntax::kDouble);
 	syntax.addFlag(kRadiusFlag, kRadiusFlagLong, MSyntax::kDouble);
-	syntax.addFlag(kNumberCVsFlag, kNumberCVsFlagLong, MSyntax::kUnsigned);
-	syntax.addFlag(kUpsideDownFlag, kUpsideDownFlagLong, MSyntax::kBoolean);
-
 	return syntax;
 }
 
 MStatus curveBrushTool::doIt(const MArgList &args)
-//
-// Description
-//     Sets up the helix parameters from arguments passed to the
-//     MEL command.
-//
 {
 	MStatus status;
 
@@ -81,124 +71,72 @@ MStatus curveBrushTool::doIt(const MArgList &args)
 	return redoIt();
 }
 
+template <typename T>
+inline MStatus getFlagArgument(MArgDatabase argData, char *flag, T &value)
+{
+	MStatus status;
+	if (argData.isFlagSet(flag))
+	{
+		status = argData.getFlagArgument(flag, 0, value);
+	}
+	return status;
+}
+
 MStatus curveBrushTool::parseArgs(const MArgList &args)
 {
 	MStatus status;
 	MArgDatabase argData(syntax(), args);
 
-	if (argData.isFlagSet(kPitchFlag))
-	{
-		double tmp;
-		status = argData.getFlagArgument(kPitchFlag, 0, tmp);
-		if (!status)
-		{
-			status.perror("pitch flag parsing failed");
-			return status;
-		}
-		pitch = tmp;
-	}
+	CHECK_MSTATUS_AND_RETURN_IT(getFlagArgument(argData, kRadiusFlag, radius));
+	CHECK_MSTATUS_AND_RETURN_IT(getFlagArgument(argData, kStrengthFlag, strength));
 
-	if (argData.isFlagSet(kRadiusFlag))
-	{
-		double tmp;
-		status = argData.getFlagArgument(kRadiusFlag, 0, tmp);
-		if (!status)
-		{
-			status.perror("radius flag parsing failed");
-			return status;
-		}
-		radius = tmp;
-	}
-
-	if (argData.isFlagSet(kNumberCVsFlag))
-	{
-		unsigned tmp;
-		status = argData.getFlagArgument(kNumberCVsFlag, 0, tmp);
-		if (!status)
-		{
-			status.perror("numCVs flag parsing failed");
-			return status;
-		}
-		numCV = tmp;
-	}
-
-	if (argData.isFlagSet(kUpsideDownFlag))
-	{
-		bool tmp;
-		status = argData.getFlagArgument(kUpsideDownFlag, 0, tmp);
-		if (!status)
-		{
-			status.perror("upside down flag parsing failed");
-			return status;
-		}
-		upDown = tmp;
-	}
-
-	return MS::kSuccess;
+	return status;
 }
 
 MStatus curveBrushTool::redoIt()
-//
-// Description
-//     This method creates the helix curve from the
-//     pitch and radius values
-//
 {
-	MStatus stat;
 
-	const unsigned deg = 3;						 // Curve Degree
-	const unsigned ncvs = numCV;				 // Number of CVs
-	const unsigned spans = ncvs - deg;			 // Number of spans
-	const unsigned nknots = spans + 2 * deg - 1; // Number of knots
-	unsigned i;
-	MPointArray controlVertices;
-	MDoubleArray knotSequences;
+	MVector offsetVector = moveVector * 0.0001 * strength;
+	M3dView view = M3dView::active3dView();
 
-	int upFactor;
-	if (upDown)
-		upFactor = -1;
-	else
-		upFactor = 1;
-
-	// Set up cvs and knots for the helix
-	//
-	for (i = 0; i < ncvs; i++)
-		controlVertices.append(MPoint(radius * cos((double)i),
-									  upFactor * pitch * (double)i,
-									  radius * sin((double)i)));
-
-	for (i = 0; i < nknots; i++)
-		knotSequences.append((double)i);
-
-	// Now create the curve
-	//
-	MFnNurbsCurve curveFn;
-
-	curveFn.create(controlVertices, knotSequences, deg,
-				   MFnNurbsCurve::kOpen, false, false,
-				   MObject::kNullObj, &stat);
-
-	if (!stat)
+	// NOTE(timmyliang): move curves cv in radius
+	for (unsigned int index = 0; index < dagPathArray.length(); ++index)
 	{
-		stat.perror("Error creating curve");
-		return stat;
+		MFnNurbsCurve curveFn(dagPathArray[index]);
+		for (MItCurveCV cvIter(dagPathArray[index]); !cvIter.isDone(); cvIter.next())
+		{
+			MPoint pos = cvIter.position();
+			int cvIndex = cvIter.index();
+			short x_pos, y_pos;
+			view.worldToView(pos, x_pos, y_pos);
+			MPoint screenCVPoint(x_pos, y_pos);
+			// NOTE(timmyliang): skip cv out of the radius
+			if ((startPoint - screenCVPoint).length() > radius)
+				continue;
+			// TODO(timmyliang): store point position for undo.
+			curvePointMap[index][cvIndex] = pos;
+			curveFn.setCV(cvIndex, pos + offsetVector, MSpace::kWorld);
+		}
+		curveFn.updateCurve();
 	}
-
-	stat = curveFn.getPath(path);
-
-	return stat;
+	return MStatus::kSuccess;
 }
 
 MStatus curveBrushTool::undoIt()
-//
-// Description
-//     Removes the helix curve from the model.
-//
 {
-	MStatus stat;
-	MObject transform = path.transform();
-	stat = MGlobal::deleteNode(transform);
-	return stat;
+	// NOTE(timmyliang): reset point position
+	for (const auto& kv : curvePointMap)
+	{
+		MFnNurbsCurve curveFn(dagPathArray[kv.first]);
+		for (const auto& it : kv.second)
+		{
+			int cvIndex = it.first;
+			MPoint pos = it.second;
+			curveFn.setCV(cvIndex, pos, MSpace::kWorld);
+		}
+	}
+
+	return MStatus::kSuccess;
 }
 
 bool curveBrushTool::isUndoable() const
@@ -221,31 +159,32 @@ MStatus curveBrushTool::finalize()
 	command.addArg(commandString());
 	command.addArg(MString(kRadiusFlag));
 	command.addArg(radius);
-	command.addArg(MString(kPitchFlag));
-	command.addArg(pitch);
-	command.addArg(MString(kNumberCVsFlag));
-	command.addArg((int)numCV);
-	command.addArg(MString(kUpsideDownFlag));
-	command.addArg(upDown);
+	command.addArg(MString(kStrengthFlag));
+	command.addArg(strength);
 	return MPxToolCommand::doFinalize(command);
 }
 
-void curveBrushTool::setRadius(double newRadius)
+void curveBrushTool::setRadius(double value)
 {
-	radius = newRadius;
+	radius = value;
 }
 
-void curveBrushTool::setPitch(double newPitch)
+void curveBrushTool::setStrength(double value)
 {
-	pitch = newPitch;
+	strength = value;
 }
 
-void curveBrushTool::setNumCVs(unsigned newNumCVs)
+void curveBrushTool::setMoveVector(MVector value)
 {
-	numCV = newNumCVs;
+	moveVector = value;
 }
 
-void curveBrushTool::setUpsideDown(bool newUpsideDown)
+void curveBrushTool::setDagPathArray(MDagPathArray value)
 {
-	upDown = newUpsideDown;
+	dagPathArray = value;
+}
+
+void curveBrushTool::setStartPoint(MPoint value)
+{
+	startPoint = value;
 }

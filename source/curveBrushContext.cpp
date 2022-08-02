@@ -1,5 +1,10 @@
 #include "curveBrushContext.h"
 
+// NOTE(timmyliang): ignore sprintf_s wraning
+#ifdef _WIN64
+#define sprintf sprintf_s
+#endif
+
 /////////////////////////////////////////////////////////////
 //
 // The user Context
@@ -116,14 +121,15 @@ MStatus curveBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &draw
 	event.getPosition(currentPosX, currentPosY);
 	auto currentPos = MPoint(currentPosX, currentPosY);
 
+	MPoint start(startPosX, startPosY);
+	MVector delta = MVector(currentPos - start);
+
 	drawMgr.beginDrawable();
 	drawMgr.setColor(MColor(1.f, 1.f, 1.f));
 	drawMgr.setLineWidth(2.0f);
-
+	// NOTE(timmyliang): hold down `B` key
 	if (eDragMode == kBrushSize)
 	{
-		MPoint start(startPosX, startPosY);
-		MVector delta = MVector(currentPos - start);
 		float deltaValue;
 		char info[64];
 		// NOTES(timmyliang): left mouse for size
@@ -142,11 +148,26 @@ MStatus curveBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &draw
 			sprintf(info, "Brush Strength: %.2f", mBrushConfig.strength());
 			drawMgr.text2d(currentPos, info);
 		}
-
 		drawMgr.line2d(start, MPoint(startPosX, startPosY + mBrushConfig.strength() * 2));
-		drawMgr.circle2d(start, mBrushConfig.size());
+	}
+	else
+	{
+		MPoint startNearPos, startFarPos, currNearPos, currFarPos;
+		view.viewToWorld(currentPosX, currentPosY, currNearPos, currFarPos);
+		view.viewToWorld(startPosX, startPosY, startFarPos, startFarPos);
+		// NOTE(timmyliang): use tool command for undo
+		curveBrushTool *cmd = (curveBrushTool *)newToolCommand();
+		cmd->setStrength(mBrushConfig.strength());
+		cmd->setRadius(mBrushConfig.size());
+		cmd->setMoveVector((currFarPos - startFarPos).normal());
+		cmd->setStartPoint(start);
+		cmd->setDagPathArray(objDagPathArray);
+		cmd->redoIt();
+		cmd->finalize();
+
 	}
 
+	drawMgr.circle2d(start, mBrushConfig.size());
 	drawMgr.endDrawable();
 	return MS::kSuccess;
 }
@@ -185,7 +206,7 @@ MStatus curveBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &
 			}
 
 			drawMgr.setLineWidth(12.0f);
-			drawMgr.mesh(MHWRender::MUIDrawManager::kClosedLine, pointArray, NULL, &colorArray);
+			drawMgr.mesh(MHWRender::MUIDrawManager::kLineStrip, pointArray, NULL, &colorArray);
 		}
 	}
 

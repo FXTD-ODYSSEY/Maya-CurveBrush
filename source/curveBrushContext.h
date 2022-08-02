@@ -8,15 +8,6 @@
 #include <maya/MFrameContext.h>
 #include <maya/MColor.h>
 
-#include <maya/MFnMesh.h>
-#include <maya/MFnNurbsCurve.h>
-#include <maya/MItSelectionList.h>
-#include <maya/MItMeshVertex.h>
-#include <maya/MColorArray.h>
-#include <maya/MDagPathArray.h>
-#include <maya/MFloatPointArray.h>
-#include <maya/MUintArray.h>
-
 #include <QtCore/QObject>
 #include <QtWidgets/QApplication>
 #include <QtCore/QEvent>
@@ -83,7 +74,7 @@ private:
 	BrushConfig mBrushConfig;
 	MPoint mBrushCenterScreenPoint;
 	bool bInStroke;
-	bool bFalloffMode = true;
+	bool bFalloffMode;
 	float fStartBrushSize;
 	float fStartBrushStrength;
 

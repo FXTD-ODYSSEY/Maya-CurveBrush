@@ -84,17 +84,17 @@ MStatus curveBrushContextCmd::appendSyntax()
 {
 	MSyntax mySyntax = syntax();
 
-	if (MS::kSuccess != mySyntax.addFlag(kNumberCVsFlag, kNumberCVsFlagLong,
-										 MSyntax::kUnsigned))
-	{
-		return MS::kFailure;
-	}
-	if (MS::kSuccess !=
-		mySyntax.addFlag(kUpsideDownFlag, kUpsideDownFlagLong,
-						 MSyntax::kBoolean))
-	{
-		return MS::kFailure;
-	}
+	// if (MS::kSuccess != mySyntax.addFlag(kNumberCVsFlag, kNumberCVsFlagLong,
+	// 									 MSyntax::kUnsigned))
+	// {
+	// 	return MS::kFailure;
+	// }
+	// if (MS::kSuccess !=
+	// 	mySyntax.addFlag(kUpsideDownFlag, kUpsideDownFlagLong,
+	// 					 MSyntax::kBoolean))
+	// {
+	// 	return MS::kFailure;
+	// }
 
 	return MS::kSuccess;
 }

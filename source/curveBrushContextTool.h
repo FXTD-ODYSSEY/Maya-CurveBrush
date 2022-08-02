@@ -2,9 +2,10 @@
 #define __curveBrushContextTool_H__
 
 #include <stdio.h>
-#include <maya/MIOStream.h>
 #include <math.h>
+#include <map>
 
+#include <maya/MIOStream.h>
 #include <maya/MString.h>
 #include <maya/MArgList.h>
 #include <maya/MEvent.h>
@@ -20,23 +21,24 @@
 #include <maya/MPxToolCommand.h>
 #include <maya/MToolsInfo.h>
 
-#include <maya/MFnNurbsCurve.h>
-
 #include <maya/MSyntax.h>
 #include <maya/MArgParser.h>
 #include <maya/MArgDatabase.h>
 #include <maya/MCursor.h>
 
+#include <maya/MFnMesh.h>
+#include <maya/MFnNurbsCurve.h>
+#include <maya/MItSelectionList.h>
+#include <maya/MItCurveCV.h>
+#include <maya/MColorArray.h>
+#include <maya/MDagPathArray.h>
+
 #include <maya/MGL.h>
 
-#define kPitchFlag "-p"
-#define kPitchFlagLong "-pitch"
 #define kRadiusFlag "-r"
 #define kRadiusFlagLong "-radius"
-#define kNumberCVsFlag "-ncv"
-#define kNumberCVsFlagLong "-numCVs"
-#define kUpsideDownFlag "-ud"
-#define kUpsideDownFlagLong "-upsideDown"
+#define kStrengthFlag "-s"
+#define kStrengthFlagLong "-strength"
 
 class curveBrushTool : public MPxToolCommand
 {
@@ -53,18 +55,19 @@ public:
 	MStatus finalize() override;
 	static MSyntax newSyntax();
 
-	void setRadius(double newRadius);
-	void setPitch(double newPitch);
-	void setNumCVs(unsigned newNumCVs);
-	void setUpsideDown(bool newUpsideDown);
+	void setRadius(double value);
+	void setStrength(double value);
+	void setStartPoint(MPoint value);
+	void setMoveVector(MVector value);
+	void setDagPathArray(MDagPathArray value);
 
 private:
-	double radius;	// Helix radius
-	double pitch;	// Helix pitch
-	unsigned numCV; // Helix number of CVs
-	bool upDown;	// Helix upsideDown
-	MDagPath path;	// The dag path to the curve.
-					// Don't save the pointer!
+	double radius;
+	double strength;
+	MPoint startPoint;
+	MVector moveVector;
+	MDagPathArray dagPathArray;
+	std::map<int, std::map<int,MPoint>> curvePointMap;
 };
 
 #endif
