@@ -96,26 +96,29 @@ MStatus curveBrushTool::parseArgs(const MArgList &args)
 MStatus curveBrushTool::redoIt()
 {
 
-	MVector offsetVector = moveVector * 0.0001 * strength;
+	MVector offsetVector = moveVector * 0.002 * strength;
 	M3dView view = M3dView::active3dView();
 
 	// NOTE(timmyliang): move curves cv in radius
+	short x_pos, y_pos;
 	for (unsigned int index = 0; index < dagPathArray.length(); ++index)
 	{
 		MFnNurbsCurve curveFn(dagPathArray[index]);
+		std::map<int, MVector> offsetMap;
 		for (MItCurveCV cvIter(dagPathArray[index]); !cvIter.isDone(); cvIter.next())
 		{
-			MPoint pos = cvIter.position();
-			int cvIndex = cvIter.index();
-			short x_pos, y_pos;
+			MPoint pos = cvIter.position(MSpace::kWorld);
 			view.worldToView(pos, x_pos, y_pos);
-			MPoint screenCVPoint(x_pos, y_pos);
-			// NOTE(timmyliang): skip cv out of the radius
-			if ((startPoint - screenCVPoint).length() > radius)
-				continue;
-			// TODO(timmyliang): store point position for undo.
+			int cvIndex = cvIter.index();
 			curvePointMap[index][cvIndex] = pos;
-			curveFn.setCV(cvIndex, pos + offsetVector, MSpace::kWorld);
+			if ((startPoint - MPoint(x_pos, y_pos)).length() < radius)
+			{
+				offsetMap[cvIndex] = pos + offsetVector;
+			}
+		}
+		for (const auto &it : offsetMap)
+		{
+			curveFn.setCV(it.first, it.second, MSpace::kWorld);
 		}
 		curveFn.updateCurve();
 	}
@@ -125,10 +128,10 @@ MStatus curveBrushTool::redoIt()
 MStatus curveBrushTool::undoIt()
 {
 	// NOTE(timmyliang): reset point position
-	for (const auto& kv : curvePointMap)
+	for (const auto &kv : curvePointMap)
 	{
 		MFnNurbsCurve curveFn(dagPathArray[kv.first]);
-		for (const auto& it : kv.second)
+		for (const auto &it : kv.second)
 		{
 			int cvIndex = it.first;
 			MPoint pos = it.second;
