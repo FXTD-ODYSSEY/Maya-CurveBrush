@@ -1,0 +1,6 @@
+[submodule "scripts/Qt.py"]
+	path = scripts/Qt.py
+	url = git@github.com:mottosso/Qt.py.git
+[submodule "scripts/attrs"]
+	path = scripts/attrs
+	url = git@github.com:python-attrs/attrs.git
