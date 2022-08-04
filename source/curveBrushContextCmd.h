@@ -6,15 +6,15 @@
 class curveBrushContextCmd : public MPxContextCommand
 {
 public:
-	curveBrushContextCmd();
-	MStatus doEditFlags() override;
-	MStatus doQueryFlags() override;
-	MPxContext *makeObj() override;
-	MStatus appendSyntax() override;
-	static void *creator();
+    curveBrushContextCmd();
+    MStatus doEditFlags() override;
+    MStatus doQueryFlags() override;
+    MPxContext *makeObj() override;
+    MStatus appendSyntax() override;
+    static void *creator();
 
 protected:
-	curveBrushContext *fHelixContext;
+    curveBrushContext *fHelixContext;
 };
 
 #endif

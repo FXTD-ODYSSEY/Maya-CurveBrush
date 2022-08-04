@@ -17,72 +17,69 @@
 // the context
 // ---------------------------------------------------------------------
 
-const char helpString[] = "Click and drag to draw helix";
+const char helpString[] = "Click and drag to sculpt curve";
 
 struct BrushConfig
 {
-	BrushConfig() : fSize(50.0f), fStrength(25.0f){};
-	float size() const { return fSize; }
-	void setSize(float value) { fSize = value > 0 ? value : 0; }
-	float strength() const { return fStrength; }
-	void setStrength(float value) { fStrength = value > 0 ? value : 0; }
+    BrushConfig() : fSize(50.0f), fStrength(15.0f){};
+    float size() const { return fSize; }
+    void setSize(float value) { fSize = value > 0 ? value : 0; }
+    float strength() const { return fStrength; }
+    void setStrength(float value) { fStrength = value > 0 ? value : 0; }
 
 private:
-	float fSize;
-	float fStrength;
+    float fSize;
+    float fStrength;
 };
 
 class curveBrushContext : public QObject, public MPxContext
 {
 public:
-	curveBrushContext();
-	void toolOnSetup(MEvent &event) override;
-	void toolOffCleanup() override;
+    curveBrushContext();
+    void toolOnSetup(MEvent &event) override;
+    void toolOffCleanup() override;
 
-	// MStatus doPress(MEvent &event) override;
-	// MStatus doDrag(MEvent &event) override;
-	// MStatus doRelease(MEvent &event) override;
-	MStatus doEnterRegion(MEvent &event) override;
+    // MStatus doPress(MEvent &event) override;
+    // MStatus doDrag(MEvent &event) override;
+    // MStatus doRelease(MEvent &event) override;
+    MStatus doEnterRegion(MEvent &event) override;
 
-	void getClassName(MString &name) const override;
+    void getClassName(MString &name) const override;
 
-	MStatus doPress(MEvent &event,
-					MHWRender::MUIDrawManager &drawManager,
-					const MHWRender::MFrameContext &context);
-	MStatus doDrag(MEvent &event,
-				   MHWRender::MUIDrawManager &drawManager,
-				   const MHWRender::MFrameContext &context);
-	MStatus doRelease(MEvent &event,
-					  MHWRender::MUIDrawManager &drawManager,
-					  const MHWRender::MFrameContext &context);
+    MStatus doPress(MEvent &event,
+                    MHWRender::MUIDrawManager &drawManager,
+                    const MHWRender::MFrameContext &context);
+    MStatus doDrag(MEvent &event,
+                   MHWRender::MUIDrawManager &drawManager,
+                   const MHWRender::MFrameContext &context);
+    MStatus doRelease(MEvent &event,
+                      MHWRender::MUIDrawManager &drawManager,
+                      const MHWRender::MFrameContext &context);
 
-	MStatus doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context);
-	bool eventFilter(QObject *object, QEvent *event);
-
-	bool doKeyPress(QKeyEvent *event);
-	bool doKeyRelease(QKeyEvent *event);
+    MStatus doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context);
+    bool eventFilter(QObject *object, QEvent *event);
 
 private:
-	void drawGuide();
+    void drawGuide();
 
-	enum DragMode
-	{
-		kNormal,
-		kBrushSize
-	};
-	DragMode eDragMode;
-	BrushConfig mBrushConfig;
-	MPoint mBrushCenterScreenPoint;
-	bool bInStroke;
-	bool bFalloffMode;
-	float fStartBrushSize;
-	float fStartBrushStrength;
+    enum DragMode
+    {
+        kNormal,
+        kBrushSize
+    };
+    DragMode eDragMode;
+    BrushConfig mBrushConfig;
+    MPoint mBrushCenterScreenPoint;
+    bool bInStroke;
+    bool bFalloffMode;
+    float fStartBrushSize;
+    float fStartBrushStrength;
 
-	MDagPathArray objDagPathArray;
+    MDagPathArray objDagPathArray;
 
-	short startPosX, startPosY;
-	short endPosX, endPosY;
-	M3dView view;
+    short startPosX, startPosY;
+    short endPosX, endPosY;
+    M3dView view;
 };
 
 #endif

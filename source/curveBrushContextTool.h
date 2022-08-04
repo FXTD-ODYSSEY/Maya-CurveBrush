@@ -43,31 +43,31 @@
 class curveBrushTool : public MPxToolCommand
 {
 public:
-	curveBrushTool();
-	~curveBrushTool() override;
-	static void *creator();
+    curveBrushTool();
+    ~curveBrushTool() override;
+    static void *creator();
 
-	MStatus doIt(const MArgList &args) override;
-	MStatus parseArgs(const MArgList &args);
-	MStatus redoIt() override;
-	MStatus undoIt() override;
-	bool isUndoable() const override;
-	MStatus finalize() override;
-	static MSyntax newSyntax();
+    MStatus doIt(const MArgList &args) override;
+    MStatus parseArgs(const MArgList &args);
+    MStatus redoIt() override;
+    MStatus undoIt() override;
+    bool isUndoable() const override;
+    MStatus finalize() override;
+    static MSyntax newSyntax();
 
-	void setRadius(double value);
-	void setStrength(double value);
-	void setStartPoint(MPoint value);
-	void setMoveVector(MVector value);
-	void setDagPathArray(MDagPathArray value);
+    void setRadius(double value);
+    void setStrength(double value);
+    void setStartPoint(MPoint value);
+    void setMoveVector(MVector value);
+    void setDagPathArray(MDagPathArray value);
 
 private:
-	double radius;
-	double strength;
-	MPoint startPoint;
-	MVector moveVector;
-	MDagPathArray dagPathArray;
-	std::map<int, std::map<int,MPoint>> curvePointMap;
+    double radius;
+    double strength;
+    MPoint startPoint;
+    MVector moveVector;
+    MDagPathArray dagPathArray;
+    std::map<int, std::map<int,MPoint>> curvePointMap;
 };
 
 #endif
