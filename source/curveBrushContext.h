@@ -58,6 +58,8 @@ public:
 
     MStatus doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context);
     bool eventFilter(QObject *object, QEvent *event);
+    
+    BrushConfig mBrushConfig;
 
 private:
     void drawGuide();
@@ -68,7 +70,6 @@ private:
         kBrushSize
     };
     DragMode eDragMode;
-    BrushConfig mBrushConfig;
     MPoint mBrushCenterScreenPoint;
     bool bInStroke;
     bool bFalloffMode;

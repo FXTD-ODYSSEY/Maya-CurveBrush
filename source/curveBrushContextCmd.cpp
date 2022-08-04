@@ -9,6 +9,11 @@
 //
 /////////////////////////////////////////////////////////////
 
+// #define kRadiusFlag "-r"
+// #define kRadiusFlagLong "-radius"
+// #define kStrengthFlag "-s"
+// #define kStrengthFlagLong "-strength"
+
 curveBrushContextCmd::curveBrushContextCmd() {}
 
 MPxContext *curveBrushContextCmd::makeObj()
@@ -18,8 +23,8 @@ MPxContext *curveBrushContextCmd::makeObj()
 //    be used to create a context.
 //
 {
-    fHelixContext = new curveBrushContext();
-    return fHelixContext;
+    mContext = new curveBrushContext();
+    return mContext;
 }
 
 void *curveBrushContextCmd::creator()
@@ -37,29 +42,29 @@ MStatus curveBrushContextCmd::doEditFlags()
 
     MArgParser argData = parser();
 
-    // if (argData.isFlagSet(kNumberCVsFlag))
-    // {
-    // 	unsigned numCVs;
-    // 	status = argData.getFlagArgument(kNumberCVsFlag, 0, numCVs);
-    // 	if (!status)
-    // 	{
-    // 		status.perror("numCVs flag parsing failed.");
-    // 		return status;
-    // 	}
-    // 	fHelixContext->setNumCVs(numCVs);
-    // }
+    if (argData.isFlagSet(kRadiusFlag))
+    {
+        double radius;
+        status = argData.getFlagArgument(kRadiusFlag, 0, radius);
+        if (!status)
+        {
+            status.perror("radius flag parsing failed.");
+            return status;
+        }
+        mContext->mBrushConfig.setSize(radius);
+    }
 
-    // if (argData.isFlagSet(kUpsideDownFlag))
-    // {
-    // 	bool upsideDown;
-    // 	status = argData.getFlagArgument(kUpsideDownFlag, 0, upsideDown);
-    // 	if (!status)
-    // 	{
-    // 		status.perror("upsideDown flag parsing failed.");
-    // 		return status;
-    // 	}
-    // 	fHelixContext->setUpsideDown(upsideDown);
-    // }
+    if (argData.isFlagSet(kStrengthFlag))
+    {
+        double strength;
+        status = argData.getFlagArgument(kStrengthFlag, 0, strength);
+        if (!status)
+        {
+            status.perror("strength flag parsing failed.");
+            return status;
+        }
+        mContext->mBrushConfig.setStrength(strength);
+    }
 
     return MS::kSuccess;
 }
@@ -68,33 +73,22 @@ MStatus curveBrushContextCmd::doQueryFlags()
 {
     MArgParser argData = parser();
 
-    // if (argData.isFlagSet(kNumberCVsFlag))
-    // {
-    // 	setResult((int)fHelixContext->numCVs());
-    // }
-    // if (argData.isFlagSet(kUpsideDownFlag))
-    // {
-    // 	setResult(fHelixContext->upsideDown());
-    // }
+    if (argData.isFlagSet(kStrengthFlag))
+    {
+        setResult((double)mContext->mBrushConfig.strength());
+    }
+    if (argData.isFlagSet(kRadiusFlag))
+    {
+        setResult((double)mContext->mBrushConfig.size());
+    }
 
     return MS::kSuccess;
 }
 
 MStatus curveBrushContextCmd::appendSyntax()
 {
-    MSyntax mySyntax = syntax();
-
-    // if (MS::kSuccess != mySyntax.addFlag(kNumberCVsFlag, kNumberCVsFlagLong,
-    // 									 MSyntax::kUnsigned))
-    // {
-    // 	return MS::kFailure;
-    // }
-    // if (MS::kSuccess !=
-    // 	mySyntax.addFlag(kUpsideDownFlag, kUpsideDownFlagLong,
-    // 					 MSyntax::kBoolean))
-    // {
-    // 	return MS::kFailure;
-    // }
-
+    MSyntax syntaxInstance = syntax();
+    CHECK_MSTATUS_AND_RETURN_IT(syntaxInstance.addFlag(kStrengthFlag, kStrengthFlagLong, MSyntax::kDouble));
+    CHECK_MSTATUS_AND_RETURN_IT(syntaxInstance.addFlag(kRadiusFlag, kRadiusFlagLong, MSyntax::kDouble));
     return MS::kSuccess;
 }

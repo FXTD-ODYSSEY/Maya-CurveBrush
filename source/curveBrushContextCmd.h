@@ -14,7 +14,7 @@ public:
     static void *creator();
 
 protected:
-    curveBrushContext *fHelixContext;
+    curveBrushContext *mContext;
 };
 
 #endif
