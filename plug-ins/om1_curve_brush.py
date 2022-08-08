@@ -27,22 +27,27 @@ from __future__ import division
 from __future__ import print_function
 
 # Import built-in modules
+from collections import Iterable
+from collections import defaultdict
 from contextlib import contextmanager
-import logging
 import inspect
-import sys
+import logging
+import math
 import os
+import sys
 
 # Import third-party modules
-from Qt import QtCore
-from Qt import QtWidgets
-from Qt import QtGui
 from Qt import QtCompat
+from Qt import QtCore
+from Qt import QtGui
+from Qt import QtWidgets
 from maya import OpenMaya
-from maya import OpenMayaUI
 from maya import OpenMayaMPx
-from pymel import core as pm
+from maya import OpenMayaUI
 from maya import cmds
+from pymel import core as pm
+import six
+
 
 logging.basicConfig()
 logger = logging.getLogger("CurveBrush")
@@ -61,16 +66,42 @@ FLAGS_DATA = {
 }
 
 
+def get_active_viewport():
+    # type: () -> QtWidgets.QWidget
+    view = OpenMayaUI.M3dView.active3dView()
+    return QtCompat.wrapInstance(int(view.widget()), QtWidgets.QWidget)
+
+
+def worldToView(position, invertY=True):
+    """
+    convert the given 3d position to  2d viewport coordinates
+    """
+    view = OpenMayaUI.M3dView.active3dView()
+    argX = OpenMaya.MScriptUtil(0)
+    argY = OpenMaya.MScriptUtil(0)
+
+    argXPtr = argX.asShortPtr()
+    argYPtr = argY.asShortPtr()
+    view.worldToView(position, argXPtr, argYPtr)
+    xPos = argX.getShort(argXPtr)
+    yPos = argY.getShort(argYPtr)
+
+    if invertY:
+        yPos = view.portHeight() - yPos
+
+    return (xPos, yPos)
+
+
 class KeyboardFilter(QtCore.QObject):
-    key_press = QtCore.Signal(QtCore.QEvent)
-    key_release = QtCore.Signal(QtCore.QEvent)
+    key_pressed = QtCore.Signal(QtCore.QEvent)
+    key_released = QtCore.Signal(QtCore.QEvent)
 
     def eventFilter(self, receiver, event):
         if isinstance(event, QtGui.QKeyEvent) and not event.isAutoRepeat():
             if event.type() == QtCore.QEvent.KeyPress:
-                self.key_press.emit(event)
+                self.key_pressed.emit(event)
             elif event.type() == QtCore.QEvent.KeyRelease:
-                self.key_release.emit(event)
+                self.key_released.emit(event)
 
         return super(KeyboardFilter, self).eventFilter(receiver, event)
 
@@ -145,11 +176,28 @@ class CanvasOverlay(QtWidgets.QWidget):
             self.moved.emit(event)
         return super(CanvasOverlay, self).eventFilter(receiver, event)
 
-    def get_active_viewport(self):
-        view = OpenMayaUI.M3dView.active3dView()
-        return QtCompat.wrapInstance(int(view.widget()), QtWidgets.QWidget)
+    @property
+    def curves(self):
+        return self.context.curves
+
+    @property
+    def radius(self):
+        return self.context.radius
+
+    @radius.setter
+    def radius(self, value):
+        self.context.radius = value if value > 0 else 0
+
+    @property
+    def strength(self):
+        return self.context.strength
+
+    @strength.setter
+    def strength(self, value):
+        self.context.strength = value if value > 0 else 0
 
     def __init__(self, context):
+        # type: (CurveBrushContext) -> None
         super(CanvasOverlay, self).__init__()
         self.setWindowFlags(
             QtCore.Qt.FramelessWindowHint
@@ -163,8 +211,12 @@ class CanvasOverlay(QtWidgets.QWidget):
         self.context = context
         self.viewport = None
         self.viewport_window = None
-        self.resized.connect(self._resize_overlay)
-        self.moved.connect(self._resize_overlay)
+        self.start_pos = QtCore.QPoint()
+        self.current_pos = QtCore.QPoint()
+        self.is_press_B = False
+        self.is_falloff_enabled = True
+        self.color_data = defaultdict(dict)
+        self.press_button = None
 
         self.mouse_filter = MouseFilter()
         self.mouse_filter.moved.connect(self.move_mouse)
@@ -173,6 +225,9 @@ class CanvasOverlay(QtWidgets.QWidget):
         self.mouse_filter.released.connect(self.release_mouse)
         self.mouse_filter.entered.connect(lambda: self.setVisible(True))
         self.mouse_filter.leaved.connect(lambda: self.setVisible(False))
+
+        self.resized.connect(self._resize_overlay)
+        self.moved.connect(self._resize_overlay)
 
     def _resize_overlay(self):
         if not QtCompat.isValid(self.viewport):
@@ -190,7 +245,7 @@ class CanvasOverlay(QtWidgets.QWidget):
                 widget.removeEventFilter(self.mouse_filter)
 
     def setup_active_viewport(self):
-        viewport = self.get_active_viewport()
+        viewport = get_active_viewport()
         if self.viewport == viewport:
             return
 
@@ -204,22 +259,39 @@ class CanvasOverlay(QtWidgets.QWidget):
         self.viewport_window.installEventFilter(self)
         self._resize_overlay()
 
+    def press_key(self, event):
+        if event.key() == QtCore.Qt.Key_B:
+            self.start_pos = self.viewport.mapFromGlobal(QtGui.QCursor.pos())
+            self.is_press_B = True
+
+    def release_key(self, event):
+        if event.key() == QtCore.Qt.Key_B:
+            self.is_press_B = False
+
     def press_mouse(self, event):
-        pass
-        # self.view = omui.M3dView.active3dView()
-        # self.pos_x, self.pos_y = event.position
-        # self.start_brush_size = self.brush_config.size
-        # self.start_brush_strength = self.brush_config.strength
+        self.start_pos = event.pos()
+        self.press_button = event.button()
+        # self.view = OpenMayaUI.M3dView.active3dView()
+        self.start_raidus = self.radius
+        self.start_strength = self.strength
 
     def release_mouse(self, event):
         pass
 
     def drag_mouse(self, event):
-        pass
-        # curr_pos_x, curr_pos_y = event.position
-        # current_pos = om.MPoint(curr_pos_x, curr_pos_y)
-        # start = om.MPoint(self.pos_x, self.pos_y)
-        # delta = current_pos - start
+        self.update()
+        current_pos = event.pos()
+        delta = current_pos - self.start_pos
+        if self.is_press_B:
+            delta_val = delta.manhattanLength()
+            if self.press_button == QtCore.Qt.LeftButton:
+                delta_val = delta_val if delta.x() > 0 else -delta_val
+                self.radius = self.start_raidus + delta_val
+            elif self.press_button == QtCore.Qt.MiddleButton:
+                delta_val = delta_val if delta.y() > 0 else -delta_val
+                self.strength = self.start_strength + delta_val
+        else:
+            pass
 
         # # Draw the lasso.
         # draw_mgr.beginDrawable()
@@ -262,52 +334,86 @@ class CanvasOverlay(QtWidgets.QWidget):
         # draw_mgr.endDrawable()
 
     def move_mouse(self, event):
-        pass
-        # qt_pos = event.pos()
-        # screen_point = OpenMaya.MPoint(qt_pos.x(), qt_pos.y())
-        # radius = self.brush_config.size
+        self.current_pos = event.pos()
+        # screen_point = OpenMaya.MPoint(self.current_pos.x(), self.current_pos.y())
 
-        # segment_count = 100
-        # if self.is_falloff_enabled:
-        #     for dag_path in self.crv_dag_path_array:
-        #         curve_fn = om.MFnNurbsCurve(dag_path)
-
-        #         colorArray = om.MColorArray()
-        #         pointArray = om.MPointArray()
-        #         for point_index in range(segment_count):
-        #             param = curve_fn.findParamFromLength(
-        #                 curve_fn.length() * point_index / segment_count
-        #             )
-        #             point = curve_fn.getPointAtParam(param, om.MSpace.kWorld)
-        #             pointArray.append(point)
-        #             x, y, _ = self.view.worldToView(point)
-        #             crv_point = om.MPoint(x, y)
-        #             distance = (crv_point - screen_point).length()
-        #             rgb = 1 - distance / radius
-        #             colorArray.append(
-        #                 om.MColor((0.0, 0.0, 0.0, 0.0))
-        #                 if distance > radius
-        #                 else om.MColor((rgb, rgb, rgb))
-        #             )
-        #         draw_mgr.setLineWidth(12.0)
-        #         draw_mgr.mesh(
-        #             omr.MUIDrawManager.kLineStrip, pointArray, None, colorArray
-        #         )
-
-        # draw_mgr.setColor(om.MColor((1.0, 1.0, 1.0)))
-        # draw_mgr.setLineWidth(2.0)
-        # draw_mgr.circle2d(screen_point, radius)
+        self.color_data.clear()
+        if self.is_falloff_enabled:
+            segment_count = 100
+            for curve in self.curves:
+                crv = pm.PyNode(curve).getShape().__apimfn__()
+                points = []
+                colors = []
+                for point_index in range(segment_count):
+                    param = crv.findParamFromLength(
+                        crv.length() * point_index / segment_count
+                    )
+                    point = OpenMaya.MPoint()
+                    crv.getPointAtParam(param, point, OpenMaya.MSpace.kWorld)
+                    x, y = worldToView(point)
+                    crv_point = QtCore.QPoint(x, y)
+                    distance = (crv_point - self.current_pos).manhattanLength()
+                    if distance < self.radius:
+                        points.append(crv_point)
+                        rgb = 1 - distance / self.radius
+                        colors.append(QtGui.QColor.fromRgbF(rgb, rgb, rgb))
+                self.color_data[curve] = {"colors": colors, "points": points}
+        self.update()
 
     def paintEvent(self, event):
-        painter = QtGui.QPainter(self)
-        height = self.height()
-        r = QtCore.QRect(0, self.height() - height, self.width(), height)
-        painter.fillRect(r, QtGui.QBrush(QtCore.Qt.blue))
-        pen = QtGui.QPen(QtGui.QColor("red"), 10)
-        painter.setPen(pen)
-        painter.drawRect(self.rect())
+        circle = self.create_brush_cricle()
+        self.draw_shape(circle, QtCore.Qt.white, 2)
+        for curve, data in self.color_data.items():
+            self.draw_shape(data.get("points"), data.get("colors"), 10)
 
         return super(CanvasOverlay, self).paintEvent(event)
+
+    def create_brush_cricle(self, count=60):
+        """
+        Get the shape of the brush
+        """
+        shape = []
+        radius = self.radius
+        pt = self.start_pos if self.is_press_B else self.current_pos
+        for index in range(count + 1):
+            theta = math.radians(360 * index / count)
+            pos_x = pt.x() + radius * math.cos(theta)
+            pos_y = pt.y() + radius * math.sin(theta)
+            shape.append(QtCore.QPointF(pos_x, pos_y))
+
+        return shape
+
+    def draw_shape(self, line_shapes, colors, width=1):
+        if len(line_shapes) < 2:
+            return
+        colors = colors or QtCore.Qt.white
+        painter = QtGui.QPainter(self)
+
+        path = QtGui.QPainterPath()
+        start_pos = line_shapes[0]
+        last_pos = line_shapes[-1]
+        path.moveTo(start_pos)
+        [path.lineTo(point) for point in line_shapes]
+
+        painter.setRenderHint(painter.Antialiasing)
+        painter.begin(self)
+
+        if isinstance(colors, Iterable) and not isinstance(colors, six.string_types):
+            grandient_color = QtGui.QLinearGradient(start_pos, last_pos)
+            grandient_color.setSpread(QtGui.QLinearGradient.PadSpread)
+
+            total = len(colors)
+            for index, color in enumerate(colors):
+                grandient_color.setColorAt(index / total, color)
+            color = grandient_color
+        else:
+            color = QtGui.QColor(colors)
+
+        pen = QtGui.QPen(color, width)
+
+        painter.setPen(pen)
+        painter.drawPath(path)
+        painter.end()
 
 
 class CurveBrushContext(OpenMayaMPx.MPxContext):
@@ -323,13 +429,18 @@ class CurveBrushContext(OpenMayaMPx.MPxContext):
         self._setTitleString(self.TITLE)
         self.setImage("pythonFamily.png", OpenMayaMPx.MPxContext.kImage1)
 
-        self.view = OpenMayaUI.M3dView.active3dView()
+        self.curves = []
+        self.radius = 50
+        self.strength = 15
+
         self.maya_window = pm.uitypes.toQtObject("MayaWindow")
         self.canvas = CanvasOverlay(self)
 
-        self.keyboarad_filter = KeyboardFilter()
-        self.mouse_filter = MouseFilter()
+        self.keyboard_filter = KeyboardFilter()
         self.app_filter = AppFilter(self)
+
+        self.keyboard_filter.key_pressed.connect(self.canvas.press_key)
+        self.keyboard_filter.key_released.connect(self.canvas.release_key)
 
     def helpStateHasChanged(self, event):
         self._setHelpString(self.HELP_TEXT)
@@ -339,14 +450,25 @@ class CurveBrushContext(OpenMayaMPx.MPxContext):
         return "curveBrush"
 
     def toolOnSetup(self, event):
+        self.curves = [
+            sel for sel in pm.ls(sl=1) if isinstance(sel.getShape(), pm.nt.NurbsCurve)
+        ]
+        if not self.curves:
+            pm.warning("No NURBS Curve selected.")
+            return
+
         app = QtWidgets.QApplication.instance()
         app.installEventFilter(self.app_filter)
-        self.maya_window.installEventFilter(self.keyboarad_filter)
+        self.maya_window.installEventFilter(self.keyboard_filter)
+        self.canvas.setup_active_viewport()
 
     def toolOffCleanup(self):
+        if not self.curves:
+            return
+
         app = QtWidgets.QApplication.instance()
         app.removeEventFilter(self.app_filter)
-        self.maya_window.removeEventFilter(self.keyboarad_filter)
+        self.maya_window.removeEventFilter(self.keyboard_filter)
 
         self.canvas.setVisible(False)
         self.canvas.cleanup_event_filter()
