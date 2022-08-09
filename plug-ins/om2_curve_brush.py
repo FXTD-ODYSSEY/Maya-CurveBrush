@@ -216,7 +216,7 @@ class CurveBrushContext(omui.MPxContext):
             currFarPos = om.MPoint()
 
             self.view.viewToWorld(curr_pos_x, curr_pos_y, currNearPos, currFarPos)
-            self.view.viewToWorld(self.pos_x, self.pos_y, startFarPos, startFarPos)
+            self.view.viewToWorld(self.pos_x, self.pos_y, startNearPos, startFarPos)
 
             cmd = CurveBrushTool()
             cmd.strength = self.brush_config.strength

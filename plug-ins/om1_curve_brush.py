@@ -33,7 +33,6 @@ from contextlib import contextmanager
 import inspect
 import logging
 import math
-import os
 import sys
 
 # Import third-party modules
@@ -72,24 +71,24 @@ def get_active_viewport():
     return QtCompat.wrapInstance(int(view.widget()), QtWidgets.QWidget)
 
 
-def worldToView(position, invertY=True):
+def world_to_view(position, invertY=True):
     """
     convert the given 3d position to  2d viewport coordinates
     """
     view = OpenMayaUI.M3dView.active3dView()
-    argX = OpenMaya.MScriptUtil(0)
-    argY = OpenMaya.MScriptUtil(0)
+    arg_x = OpenMaya.MScriptUtil(0)
+    arg_y = OpenMaya.MScriptUtil(0)
 
-    argXPtr = argX.asShortPtr()
-    argYPtr = argY.asShortPtr()
-    view.worldToView(position, argXPtr, argYPtr)
-    xPos = argX.getShort(argXPtr)
-    yPos = argY.getShort(argYPtr)
+    arg_x_ptr = arg_x.asShortPtr()
+    arg_y_ptr = arg_y.asShortPtr()
+    view.worldToView(position, arg_x_ptr, arg_y_ptr)
+    x_pos = arg_x.getShort(arg_x_ptr)
+    y_pos = arg_y.getShort(arg_y_ptr)
 
     if invertY:
-        yPos = view.portHeight() - yPos
+        y_pos = view.portHeight() - y_pos
 
-    return (xPos, yPos)
+    return (x_pos, y_pos)
 
 
 class KeyboardFilter(QtCore.QObject):
@@ -107,6 +106,7 @@ class KeyboardFilter(QtCore.QObject):
 
 
 class MouseFilter(QtCore.QObject):
+    wheel = QtCore.Signal(QtCore.QEvent)
     moved = QtCore.Signal(QtCore.QEvent)
     clicked = QtCore.Signal(QtCore.QEvent)
     dragged = QtCore.Signal(QtCore.QEvent)
@@ -124,19 +124,21 @@ class MouseFilter(QtCore.QObject):
             self.moved.emit(event)
             if self.is_clicked:
                 self.dragged.emit(event)
-        if (
+        elif (
             event_type == QtCore.QEvent.MouseButtonPress
             or event_type == QtCore.QEvent.MouseButtonDblClick
         ):
             self.is_clicked = True
             self.clicked.emit(event)
-        if event_type == QtCore.QEvent.MouseButtonRelease:
+        elif event_type == QtCore.QEvent.MouseButtonRelease:
             self.is_clicked = False
             self.released.emit(event)
-        if event_type == QtCore.QEvent.Enter:
+        elif event_type == QtCore.QEvent.Enter:
             self.entered.emit()
-        if event_type == QtCore.QEvent.Leave:
+        elif event_type == QtCore.QEvent.Leave:
             self.leaved.emit()
+        elif event_type == QtCore.QEvent.Wheel:
+            self.wheel.emit(event)
 
         return super(MouseFilter, self).eventFilter(receiver, event)
 
@@ -196,6 +198,20 @@ class CanvasOverlay(QtWidgets.QWidget):
     def strength(self, value):
         self.context.strength = value if value > 0 else 0
 
+    @property
+    def message_info(self):
+        return self._message_info
+
+    @strength.setter
+    def message_info(self, value):
+        self._message_info = str(value)
+
+        def reset_message_info():
+            self._message_info = ""
+            
+        # NOTES(timmyliang): reset message_info after 2 seconds
+        QtCore.QTimer.singleShot(2000, reset_message_info)
+
     def __init__(self, context):
         # type: (CurveBrushContext) -> None
         super(CanvasOverlay, self).__init__()
@@ -214,9 +230,11 @@ class CanvasOverlay(QtWidgets.QWidget):
         self.start_pos = QtCore.QPoint()
         self.current_pos = QtCore.QPoint()
         self.is_press_B = False
+        self.is_press_alt = True
         self.is_falloff_enabled = True
         self.color_data = defaultdict(dict)
         self.press_button = None
+        self._message_info = ""
 
         self.mouse_filter = MouseFilter()
         self.mouse_filter.moved.connect(self.move_mouse)
@@ -225,6 +243,7 @@ class CanvasOverlay(QtWidgets.QWidget):
         self.mouse_filter.released.connect(self.release_mouse)
         self.mouse_filter.entered.connect(lambda: self.setVisible(True))
         self.mouse_filter.leaved.connect(lambda: self.setVisible(False))
+        self.mouse_filter.wheel.connect(self.move_mouse)
 
         self.resized.connect(self._resize_overlay)
         self.moved.connect(self._resize_overlay)
@@ -259,19 +278,25 @@ class CanvasOverlay(QtWidgets.QWidget):
         self.viewport_window.installEventFilter(self)
         self._resize_overlay()
 
+        self.viewport.setFocus()
+        self.viewport_window.setFocus()
+
     def press_key(self, event):
         if event.key() == QtCore.Qt.Key_B:
             self.start_pos = self.viewport.mapFromGlobal(QtGui.QCursor.pos())
             self.is_press_B = True
+            
+        if event.modifiers() == QtCore.Qt.AltModifier:
+            self.is_press_alt = True
 
     def release_key(self, event):
+        self.is_press_alt = False
         if event.key() == QtCore.Qt.Key_B:
             self.is_press_B = False
 
     def press_mouse(self, event):
         self.start_pos = event.pos()
         self.press_button = event.button()
-        # self.view = OpenMayaUI.M3dView.active3dView()
         self.start_raidus = self.radius
         self.start_strength = self.strength
 
@@ -279,7 +304,6 @@ class CanvasOverlay(QtWidgets.QWidget):
         pass
 
     def drag_mouse(self, event):
-        self.update()
         current_pos = event.pos()
         delta = current_pos - self.start_pos
         if self.is_press_B:
@@ -287,56 +311,42 @@ class CanvasOverlay(QtWidgets.QWidget):
             if self.press_button == QtCore.Qt.LeftButton:
                 delta_val = delta_val if delta.x() > 0 else -delta_val
                 self.radius = self.start_raidus + delta_val
+                self.message_info = "Brush Size: %s" % self.radius
             elif self.press_button == QtCore.Qt.MiddleButton:
-                delta_val = delta_val if delta.y() > 0 else -delta_val
+                delta_val = delta_val if delta.y() < 0 else -delta_val
                 self.strength = self.start_strength + delta_val
-        else:
-            pass
+                self.message_info = "Brush Strength: %s" % self.strength
+        # NOTE(timmyliang): ignore alt orbit camera
+        elif not self.is_press_alt:
+            startNearPos = OpenMaya.MPoint()
+            startFarPos = OpenMaya.MPoint()
+            currNearPos = OpenMaya.MPoint()
+            currFarPos = OpenMaya.MPoint()
 
-        # # Draw the lasso.
-        # draw_mgr.beginDrawable()
-        # draw_mgr.setColor(om.MColor((1.0, 1.0, 1.0)))
-        # draw_mgr.setLineWidth(2.0)
-        # if self.drag_mode == DragMode.brush:
-        #     if event.mouseButton() == event.kLeftMouse:
-        #         delta_val = delta.length() if delta.x > 0 else -delta.length()
-        #         self.brush_config.size = self.start_brush_size + delta_val
-        #         info = "Brush Size: %s" % self.brush_config.size
-        #         draw_mgr.text2d(current_pos, info)
-        #     elif event.mouseButton() == event.kMiddleMouse:
-        #         delta_val = delta.length() if delta.y > 0 else -delta.length()
-        #         self.brush_config.strength = self.start_brush_strength + delta_val
-        #         info = "Brush Strength: %s" % self.brush_config.strength
-        #         draw_mgr.text2d(current_pos, info)
-
-        #     end_point = om.MPoint(
-        #         self.pos_x, self.pos_y + self.brush_config.strength * 2
-        #     )
-        #     draw_mgr.line2d(start, end_point)
-        # else:
-        #     startNearPos = om.MPoint()
-        #     startFarPos = om.MPoint()
-        #     currNearPos = om.MPoint()
-        #     currFarPos = om.MPoint()
-
-        #     self.view.viewToWorld(curr_pos_x, curr_pos_y, currNearPos, currFarPos)
-        #     self.view.viewToWorld(self.pos_x, self.pos_y, startFarPos, startFarPos)
-
-        #     cmd = CurveBrushTool()
-        #     cmd.strength = self.brush_config.strength
-        #     cmd.radius = self.brush_config.size
-        #     cmd.move_vector = (currFarPos - startFarPos).normal()
-        #     cmd.start_point = start
-        #     cmd.dag_path_array = self.crv_dag_path_array
-        #     cmd.redoIt()
-
-        # draw_mgr.circle2d(start, self.brush_config.size)
-        # draw_mgr.endDrawable()
+            view = OpenMayaUI.M3dView.active3dView()
+            # NOTES(timmyliang): QPoint need to minus y as MPoint
+            view.viewToWorld(
+                current_pos.x(), -current_pos.y(), currNearPos, currFarPos
+            )
+            view.viewToWorld(
+                self.start_pos.x(), -self.start_pos.y(), startNearPos, startFarPos
+            )
+            
+            ptr = self.context._newToolCommand()
+            cmd = CurveBrushTool.instance_dict.get(OpenMayaMPx.asHashable(ptr))
+            cmd.strength = self.strength
+            cmd.radius = self.radius
+            cmd.move_vector = (currFarPos - startFarPos).normal()
+            cmd.start_point = OpenMaya.MPoint(self.start_pos.x(), self.start_pos.y())
+            cmd.curves = self.curves
+            cmd.redoIt()
+            cmd.finalize()
+            view.refresh(False,True)
+            
+        self.update()
 
     def move_mouse(self, event):
         self.current_pos = event.pos()
-        # screen_point = OpenMaya.MPoint(self.current_pos.x(), self.current_pos.y())
-
         self.color_data.clear()
         if self.is_falloff_enabled:
             segment_count = 100
@@ -350,7 +360,7 @@ class CanvasOverlay(QtWidgets.QWidget):
                     )
                     point = OpenMaya.MPoint()
                     crv.getPointAtParam(param, point, OpenMaya.MSpace.kWorld)
-                    x, y = worldToView(point)
+                    x, y = world_to_view(point)
                     crv_point = QtCore.QPoint(x, y)
                     distance = (crv_point - self.current_pos).manhattanLength()
                     if distance < self.radius:
@@ -361,8 +371,10 @@ class CanvasOverlay(QtWidgets.QWidget):
         self.update()
 
     def paintEvent(self, event):
-        circle = self.create_brush_cricle()
-        self.draw_shape(circle, QtCore.Qt.white, 2)
+        self.draw_shape(self.create_brush_cricle(), QtCore.Qt.white, 2)
+        if self.is_press_B:
+            self.draw_shape(self.create_brush_line(), QtCore.Qt.white, 2)
+        self.draw_text(self._message_info)
         for curve, data in self.color_data.items():
             self.draw_shape(data.get("points"), data.get("colors"), 10)
 
@@ -380,7 +392,16 @@ class CanvasOverlay(QtWidgets.QWidget):
             pos_x = pt.x() + radius * math.cos(theta)
             pos_y = pt.y() + radius * math.sin(theta)
             shape.append(QtCore.QPointF(pos_x, pos_y))
+        return shape
 
+    def create_brush_line(self):
+        """
+        Get the shape of the brush
+        """
+        shape = []
+        start_pt = self.start_pos if self.is_press_B else self.current_pos
+        shape.append(start_pt)
+        shape.append(QtCore.QPoint(start_pt.x(), start_pt.y() - self.strength))
         return shape
 
     def draw_shape(self, line_shapes, colors, width=1):
@@ -390,7 +411,7 @@ class CanvasOverlay(QtWidgets.QWidget):
         painter = QtGui.QPainter(self)
 
         path = QtGui.QPainterPath()
-        start_pos = line_shapes[0]
+        start_pos = line_shapes.pop(0)
         last_pos = line_shapes[-1]
         path.moveTo(start_pos)
         [path.lineTo(point) for point in line_shapes]
@@ -413,6 +434,14 @@ class CanvasOverlay(QtWidgets.QWidget):
 
         painter.setPen(pen)
         painter.drawPath(path)
+        painter.end()
+
+    def draw_text(self, text, pos=None, color=QtCore.Qt.white, width=1):
+        painter = QtGui.QPainter(self)
+        pen = QtGui.QPen(color, width)
+        painter.setPen(pen)
+        pos = pos or self.current_pos + QtCore.QPoint(10, 0)
+        painter.drawText(pos, text)
         painter.end()
 
 
@@ -475,6 +504,8 @@ class CurveBrushContext(OpenMayaMPx.MPxContext):
 
 
 class CurveBrushContextCmd(OpenMayaMPx.MPxContextCommand):
+    
+    
     def __init__(self):
         super(CurveBrushContextCmd, self).__init__()
         self.context = None
@@ -531,6 +562,106 @@ class CurveBrushContextCmd(OpenMayaMPx.MPxContextCommand):
         self.setResult(self.context.state.stroke.strength)
 
 
+class CurveBrushTool(OpenMayaMPx.MPxToolCommand):
+
+    instance_dict = {}
+    
+    @classmethod
+    def creator(cls):
+        return cls()
+
+    @classmethod
+    def newSyntax(cls):
+        syntax = OpenMaya.MSyntax()
+        for flag, config in FLAGS_DATA.items():
+            long_flag = config.get("long")
+            flag_type = config.get("type")
+            syntax.addFlag(flag, long_flag, flag_type)
+        return syntax
+
+    def __init__(self):
+        super(CurveBrushTool, self).__init__()
+        self.radius = 0
+        self.strength = 0
+        self.move_vector = None
+        self.start_point = None
+        self.curves = []
+        self.cv_pos_map = defaultdict(dict)
+        self.instance_dict[OpenMayaMPx.asHashable(self)] = self
+
+        self.flags_data = FLAGS_DATA.copy()
+        for name, func in inspect.getmembers(self, inspect.ismethod):
+            if name.startswith(tuple("flag_%s_" % typ for typ in FLAG_TYPES)):
+                _, flag_type, flag = name.split("_")
+                self.flags_data["-{0}".format(flag)][flag_type] = func
+
+    def commandString(self):
+        return CONTEXT_TOOL_NAME
+
+    def appendSyntax(self):
+        syntax = self.syntax()
+        for flag, config in self.flags_data.items():
+            syntax.addFlag(flag, config["long"], config["type"])
+
+    def doIt(self, args):
+
+        arg_db = OpenMaya.MArgDatabase(self.syntax(), args)
+        for flag, config in self.flags_data.items():
+            callback = config.get("create")
+            if callable(callback) and arg_db.isFlagSet(flag):
+                getter = getattr(arg_db, GETTER_MAP.get(config.get("type")))
+                value = getter(flag, 0)
+                callback(value)
+        return self.redoIt()
+
+    def redoIt(self):
+        offset_vector = self.move_vector * 0.002 * self.strength
+        for index, curve in enumerate(self.curves):
+            dag_path = pm.PyNode(curve).getShape().__apimdagpath__()
+            itr = OpenMaya.MItCurveCV(dag_path)
+            curve_fn = OpenMaya.MFnNurbsCurve(dag_path)
+
+            offset_map = {}
+            while not itr.isDone():
+                cv_index = itr.index()
+                pos = itr.position(OpenMaya.MSpace.kWorld)
+                self.cv_pos_map[curve][cv_index] = pos
+                cv_point=  OpenMaya.MPoint(*world_to_view(pos))
+                if (self.start_point - cv_point).length() < self.radius:
+                    offset_map[cv_index] = pos + offset_vector
+                
+                itr.next()
+                
+            for index,pos in offset_map.items():
+                curve_fn.setCV(index, pos, OpenMaya.MSpace.kWorld)
+            
+            curve_fn.updateCurve()
+
+    def undoIt(self):
+        for curve, collections in self.cv_pos_map.items():
+            curve_fn = pm.PyNode(curve).getShape().__apimfn__()
+            for cv_index, pos in collections.items():
+                curve_fn.setCV(cv_index, pos, OpenMaya.MSpace.kWorld)
+
+    def isUndoable(self):
+        return True
+
+    def finalize(self):
+        command = OpenMaya.MArgList()
+        command.addArg(self.commandString)
+        for flag, config in self.flags_data.items():
+            long_flag = config.get("long")
+            command.addArg(flag)
+            command.addArg(getattr(self, long_flag[1:]))
+        return self._doFinalize(command)
+
+    def flag_create_r(self, value):
+        self.radius = value
+
+    def flag_create_s(self, value):
+        self.strength = value
+
+
 @contextmanager
 def try_run(name):
     try:
@@ -542,6 +673,7 @@ def try_run(name):
 
 
 CONTEXT_NAME = "c" + CurveBrushContext.__name__[1:]
+CONTEXT_TOOL_NAME = "c" + CurveBrushTool.__name__[1:]
 
 # Initialize the script plug-in
 def initializePlugin(obj):
@@ -549,7 +681,13 @@ def initializePlugin(obj):
     plugin_fn = OpenMayaMPx.MFnPlugin(obj, "timmyliang", "1.0.0")
 
     with try_run(CONTEXT_NAME) as name:
-        plugin_fn.registerContextCommand(name, CurveBrushContextCmd.creator)
+        plugin_fn.registerContextCommand(
+            name,
+            CurveBrushContextCmd.creator,
+            CONTEXT_TOOL_NAME,
+            CurveBrushTool.creator,
+            CurveBrushTool.newSyntax,
+        )
 
 
 # Uninitialize the script plug-in
@@ -557,4 +695,4 @@ def uninitializePlugin(obj):
     plugin_fn = OpenMayaMPx.MFnPlugin(obj)
 
     with try_run(CONTEXT_NAME) as name:
-        plugin_fn.deregisterContextCommand(name)
+        plugin_fn.deregisterContextCommand(name, CONTEXT_TOOL_NAME)
