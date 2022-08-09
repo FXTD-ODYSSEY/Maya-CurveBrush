@@ -144,10 +144,10 @@ class MouseFilter(QtCore.QObject):
 
 
 class AppFilter(QtCore.QObject):
-    def __init__(self, context):
+    def __init__(self, canvas):
         # type: (CurveBrushContext) -> None
         super(AppFilter, self).__init__()
-        self.context = context
+        self.canvas = canvas
 
     def eventFilter(self, receiver, event):
         if event.type() in [QtCore.QEvent.MouseButtonPress]:
@@ -156,12 +156,9 @@ class AppFilter(QtCore.QObject):
             name = panel and panel.objectName()
             if name:
                 is_model_editor = cmds.objectTypeUI(name, i="modelEditor")
-                self.context.canvas.setVisible(is_model_editor)
+                self.canvas.setVisible(is_model_editor)
                 if is_model_editor:
-                    QtCore.QTimer.singleShot(
-                        0, self.context.canvas.setup_active_viewport
-                    )
-                    # self.context.canvas.setup_active_viewport()
+                    QtCore.QTimer.singleShot(0, self.canvas.setup_active_viewport)
         return super(AppFilter, self).eventFilter(receiver, event)
 
 
@@ -170,6 +167,8 @@ class CanvasOverlay(QtWidgets.QWidget):
 
     resized = QtCore.Signal(QtCore.QEvent)
     moved = QtCore.Signal(QtCore.QEvent)
+    tool_setup = QtCore.Signal()
+    tool_cleanup = QtCore.Signal()
 
     def eventFilter(self, receiver, event):
         if event.type() == QtCore.QEvent.Resize:
@@ -177,10 +176,6 @@ class CanvasOverlay(QtWidgets.QWidget):
         elif event.type() == QtCore.QEvent.Move:
             self.moved.emit(event)
         return super(CanvasOverlay, self).eventFilter(receiver, event)
-
-    @property
-    def curves(self):
-        return self.context.curves
 
     @property
     def radius(self):
@@ -208,7 +203,7 @@ class CanvasOverlay(QtWidgets.QWidget):
 
         def reset_message_info():
             self._message_info = ""
-            
+
         # NOTES(timmyliang): reset message_info after 2 seconds
         QtCore.QTimer.singleShot(2000, reset_message_info)
 
@@ -235,6 +230,7 @@ class CanvasOverlay(QtWidgets.QWidget):
         self.color_data = defaultdict(dict)
         self.press_button = None
         self._message_info = ""
+        self.curves = []
 
         self.mouse_filter = MouseFilter()
         self.mouse_filter.moved.connect(self.move_mouse)
@@ -245,8 +241,41 @@ class CanvasOverlay(QtWidgets.QWidget):
         self.mouse_filter.leaved.connect(lambda: self.setVisible(False))
         self.mouse_filter.wheel.connect(self.move_mouse)
 
+        self.keyboard_filter = KeyboardFilter()
+        self.keyboard_filter.key_pressed.connect(self.press_key)
+        self.keyboard_filter.key_released.connect(self.release_key)
+
+        self.app_filter = AppFilter(self)
+        self.maya_window = pm.uitypes.toQtObject("MayaWindow")
+        self.tool_setup.connect(self._setup_tool)
+        self.tool_cleanup.connect(self._cleanup_tool)
         self.resized.connect(self._resize_overlay)
         self.moved.connect(self._resize_overlay)
+
+    def _setup_tool(self):
+        self.curves = [
+            sel for sel in pm.ls(sl=1) if isinstance(sel.getShape(), pm.nt.NurbsCurve)
+        ]
+        if not self.curves:
+            pm.warning("No NURBS Curve selected.")
+            return
+
+        app = QtWidgets.QApplication.instance()
+        app.installEventFilter(self.app_filter)
+        self.maya_window.installEventFilter(self.keyboard_filter)
+
+        self.setup_active_viewport()
+
+    def _cleanup_tool(self):
+        if not self.curves:
+            return
+
+        app = QtWidgets.QApplication.instance()
+        app.removeEventFilter(self.app_filter)
+        self.maya_window.removeEventFilter(self.keyboard_filter)
+
+        self.setVisible(False)
+        self.cleanup_event_filter()
 
     def _resize_overlay(self):
         if not QtCompat.isValid(self.viewport):
@@ -285,7 +314,7 @@ class CanvasOverlay(QtWidgets.QWidget):
         if event.key() == QtCore.Qt.Key_B:
             self.start_pos = self.viewport.mapFromGlobal(QtGui.QCursor.pos())
             self.is_press_B = True
-            
+
         if event.modifiers() == QtCore.Qt.AltModifier:
             self.is_press_alt = True
 
@@ -325,13 +354,11 @@ class CanvasOverlay(QtWidgets.QWidget):
 
             view = OpenMayaUI.M3dView.active3dView()
             # NOTES(timmyliang): QPoint need to minus y as MPoint
-            view.viewToWorld(
-                current_pos.x(), -current_pos.y(), currNearPos, currFarPos
-            )
+            view.viewToWorld(current_pos.x(), -current_pos.y(), currNearPos, currFarPos)
             view.viewToWorld(
                 self.start_pos.x(), -self.start_pos.y(), startNearPos, startFarPos
             )
-            
+
             ptr = self.context._newToolCommand()
             cmd = CurveBrushTool.instance_dict.get(OpenMayaMPx.asHashable(ptr))
             cmd.strength = self.strength
@@ -341,8 +368,8 @@ class CanvasOverlay(QtWidgets.QWidget):
             cmd.curves = self.curves
             cmd.redoIt()
             cmd.finalize()
-            view.refresh(False,True)
-            
+            view.refresh(False, True)
+
         self.update()
 
     def move_mouse(self, event):
@@ -355,9 +382,8 @@ class CanvasOverlay(QtWidgets.QWidget):
                 points = []
                 colors = []
                 for point_index in range(segment_count):
-                    param = crv.findParamFromLength(
-                        crv.length() * point_index / segment_count
-                    )
+                    percent = crv.length() * point_index / segment_count
+                    param = crv.findParamFromLength(percent)
                     point = OpenMaya.MPoint()
                     crv.getPointAtParam(param, point, OpenMaya.MSpace.kWorld)
                     x, y = world_to_view(point)
@@ -381,9 +407,6 @@ class CanvasOverlay(QtWidgets.QWidget):
         return super(CanvasOverlay, self).paintEvent(event)
 
     def create_brush_cricle(self, count=60):
-        """
-        Get the shape of the brush
-        """
         shape = []
         radius = self.radius
         pt = self.start_pos if self.is_press_B else self.current_pos
@@ -395,9 +418,6 @@ class CanvasOverlay(QtWidgets.QWidget):
         return shape
 
     def create_brush_line(self):
-        """
-        Get the shape of the brush
-        """
         shape = []
         start_pt = self.start_pos if self.is_press_B else self.current_pos
         shape.append(start_pt)
@@ -451,25 +471,14 @@ class CurveBrushContext(OpenMayaMPx.MPxContext):
     HELP_TEXT = "Curve Brush Context."
 
     def __init__(self):
-        """
-        Initialize the members of the SquareScaleManipContext class.
-        """
         super(CurveBrushContext, self).__init__()
         self._setTitleString(self.TITLE)
         self.setImage("pythonFamily.png", OpenMayaMPx.MPxContext.kImage1)
 
-        self.curves = []
         self.radius = 50
         self.strength = 15
 
-        self.maya_window = pm.uitypes.toQtObject("MayaWindow")
         self.canvas = CanvasOverlay(self)
-
-        self.keyboard_filter = KeyboardFilter()
-        self.app_filter = AppFilter(self)
-
-        self.keyboard_filter.key_pressed.connect(self.canvas.press_key)
-        self.keyboard_filter.key_released.connect(self.canvas.release_key)
 
     def helpStateHasChanged(self, event):
         self._setHelpString(self.HELP_TEXT)
@@ -479,33 +488,13 @@ class CurveBrushContext(OpenMayaMPx.MPxContext):
         return "curveBrush"
 
     def toolOnSetup(self, event):
-        self.curves = [
-            sel for sel in pm.ls(sl=1) if isinstance(sel.getShape(), pm.nt.NurbsCurve)
-        ]
-        if not self.curves:
-            pm.warning("No NURBS Curve selected.")
-            return
-
-        app = QtWidgets.QApplication.instance()
-        app.installEventFilter(self.app_filter)
-        self.maya_window.installEventFilter(self.keyboard_filter)
-        self.canvas.setup_active_viewport()
+        self.canvas.tool_setup.emit()
 
     def toolOffCleanup(self):
-        if not self.curves:
-            return
-
-        app = QtWidgets.QApplication.instance()
-        app.removeEventFilter(self.app_filter)
-        self.maya_window.removeEventFilter(self.keyboard_filter)
-
-        self.canvas.setVisible(False)
-        self.canvas.cleanup_event_filter()
+        self.canvas.tool_cleanup.emit()
 
 
 class CurveBrushContextCmd(OpenMayaMPx.MPxContextCommand):
-    
-    
     def __init__(self):
         super(CurveBrushContextCmd, self).__init__()
         self.context = None
@@ -565,7 +554,7 @@ class CurveBrushContextCmd(OpenMayaMPx.MPxContextCommand):
 class CurveBrushTool(OpenMayaMPx.MPxToolCommand):
 
     instance_dict = {}
-    
+
     @classmethod
     def creator(cls):
         return cls()
@@ -626,15 +615,15 @@ class CurveBrushTool(OpenMayaMPx.MPxToolCommand):
                 cv_index = itr.index()
                 pos = itr.position(OpenMaya.MSpace.kWorld)
                 self.cv_pos_map[curve][cv_index] = pos
-                cv_point=  OpenMaya.MPoint(*world_to_view(pos))
+                cv_point = OpenMaya.MPoint(*world_to_view(pos))
                 if (self.start_point - cv_point).length() < self.radius:
                     offset_map[cv_index] = pos + offset_vector
-                
+
                 itr.next()
-                
-            for index,pos in offset_map.items():
+
+            for index, pos in offset_map.items():
                 curve_fn.setCV(index, pos, OpenMaya.MSpace.kWorld)
-            
+
             curve_fn.updateCurve()
 
     def undoIt(self):
