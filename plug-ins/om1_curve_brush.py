@@ -307,9 +307,6 @@ class CanvasOverlay(QtWidgets.QWidget):
         self.viewport_window.installEventFilter(self)
         self._resize_overlay()
 
-        self.viewport.setFocus()
-        self.viewport_window.setFocus()
-
     def press_key(self, event):
         if event.key() == QtCore.Qt.Key_B:
             self.start_pos = self.viewport.mapFromGlobal(QtGui.QCursor.pos())
@@ -388,11 +385,17 @@ class CanvasOverlay(QtWidgets.QWidget):
                     crv.getPointAtParam(param, point, OpenMaya.MSpace.kWorld)
                     x, y = world_to_view(point)
                     crv_point = QtCore.QPoint(x, y)
+                    points.append(crv_point)
                     distance = (crv_point - self.current_pos).manhattanLength()
-                    if distance < self.radius:
-                        points.append(crv_point)
-                        rgb = 1 - distance / self.radius
-                        colors.append(QtGui.QColor.fromRgbF(rgb, rgb, rgb))
+                    rgb = 1 - distance / self.radius
+                    colors.append(
+                        QtGui.QColor.fromRgbF(rgb,rgb, rgb)
+                        if distance < self.radius
+                        else QtGui.QColor.fromRgbF(0,0, 0,0)
+                    )
+                points.append(points[0])
+                colors.append(colors[0])
+                # temp = -1
                 self.color_data[curve] = {"colors": colors, "points": points}
         self.update()
 
@@ -430,30 +433,32 @@ class CanvasOverlay(QtWidgets.QWidget):
         colors = colors or QtCore.Qt.white
         painter = QtGui.QPainter(self)
 
-        path = QtGui.QPainterPath()
-        start_pos = line_shapes.pop(0)
-        last_pos = line_shapes[-1]
-        path.moveTo(start_pos)
-        [path.lineTo(point) for point in line_shapes]
-
         painter.setRenderHint(painter.Antialiasing)
         painter.begin(self)
 
         if isinstance(colors, Iterable) and not isinstance(colors, six.string_types):
-            grandient_color = QtGui.QLinearGradient(start_pos, last_pos)
-            grandient_color.setSpread(QtGui.QLinearGradient.PadSpread)
-
-            total = len(colors)
-            for index, color in enumerate(colors):
-                grandient_color.setColorAt(index / total, color)
-            color = grandient_color
+            for index, point in enumerate(line_shapes[:-1]):
+                start_point = point
+                end_point = line_shapes[index+1]
+                grandient_color = QtGui.QLinearGradient(start_point,end_point)
+                start_color = colors[index]
+                end_color = colors[index+1]
+                grandient_color.setColorAt(0, start_color)
+                grandient_color.setColorAt(1, end_color)
+                pen = QtGui.QPen(grandient_color, width)
+                pen.setCapStyle(QtCore.Qt.RoundCap)
+                pen.setJoinStyle(QtCore.Qt.RoundJoin)
+                painter.setPen(pen)
+                painter.drawLine(start_point,end_point)
         else:
+            path = QtGui.QPainterPath()
+            path.moveTo(line_shapes[0])
+            [path.lineTo(point) for point in line_shapes]
             color = QtGui.QColor(colors)
-
-        pen = QtGui.QPen(color, width)
-
-        painter.setPen(pen)
-        painter.drawPath(path)
+            pen = QtGui.QPen(color, width)
+            painter.setPen(pen)
+            painter.drawPath(path)
+    
         painter.end()
 
     def draw_text(self, text, pos=None, color=QtCore.Qt.white, width=1):
