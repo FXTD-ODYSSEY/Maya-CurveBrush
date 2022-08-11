@@ -363,9 +363,10 @@ class CurveBrushTool(omui.MPxToolCommand):
                 _, flag_type, flag = name.split("_")
                 self.flags_data["-{0}".format(flag)][flag_type] = func
 
-    def newSyntax(self):
+    @classmethod
+    def newSyntax(cls):
         syntax = om.MSyntax()
-        for flag, config in self.flags_data.items():
+        for flag, config in cls.FLAGS_DATA.items():
             long_flag = config.get("long")
             flag_type = config.get("type")
             syntax.addFlag(flag, long_flag, flag_type)
@@ -422,7 +423,7 @@ class CurveBrushTool(omui.MPxToolCommand):
     #         command.addArg(flag)
     #         command.addArg(getattr(self, long_flag[1:]))
     #     # TODO(timmyliang): not accept the command argument
-    #     return self.doFinalize()
+    #     return self.doFinalize(command)
 
     def flag_create_r(self, value):
         self.radius = value
@@ -432,12 +433,21 @@ class CurveBrushTool(omui.MPxToolCommand):
 
 
 CONTEXT_NAME = "c" + CurveBrushContext.__name__[1:]
+CONTEXT_TOOL_NAME = "c" + CurveBrushTool.__name__[1:]
 
 # Initialize the plug-in
 def initializePlugin(plugin):
     pluginFn = om.MFnPlugin(plugin)
     try:
         pluginFn.registerContextCommand(CONTEXT_NAME, CurveBrushContextCmd.creator)
+        # TODO(timmyliang): not support MPxToolCommand registered
+        # pluginFn.registerContextCommand(
+        #     CONTEXT_NAME,
+        #     CurveBrushContextCmd.creator,
+        #     CONTEXT_TOOL_NAME,
+        #     CurveBrushTool.creator,
+        #     CurveBrushTool.newSyntax,
+        # )
     except:
         sys.stderr.write("Failed to register command: %s\n" % CONTEXT_NAME)
         raise

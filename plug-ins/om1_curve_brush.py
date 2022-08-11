@@ -150,7 +150,7 @@ class AppFilter(QtCore.QObject):
         self.canvas = canvas
 
     def eventFilter(self, receiver, event):
-        if event.type() in [QtCore.QEvent.MouseButtonPress]:
+        if event.type() == QtCore.QEvent.MouseButtonPress:
             widget = QtWidgets.QApplication.widgetAt(QtGui.QCursor.pos())
             panel = isinstance(widget, QtCore.QObject) and widget.parent()
             name = panel and panel.objectName()
@@ -389,9 +389,9 @@ class CanvasOverlay(QtWidgets.QWidget):
                     distance = (crv_point - self.current_pos).manhattanLength()
                     rgb = 1 - distance / self.radius
                     colors.append(
-                        QtGui.QColor.fromRgbF(rgb,rgb, rgb)
+                        QtGui.QColor.fromRgbF(rgb, rgb, rgb)
                         if distance < self.radius
-                        else QtGui.QColor.fromRgbF(0,0, 0,0)
+                        else QtGui.QColor.fromRgbF(0, 0, 0, 0)
                     )
                 points.append(points[0])
                 colors.append(colors[0])
@@ -436,20 +436,24 @@ class CanvasOverlay(QtWidgets.QWidget):
         painter.setRenderHint(painter.Antialiasing)
         painter.begin(self)
 
-        if isinstance(colors, Iterable) and not isinstance(colors, six.string_types):
+        if (
+            isinstance(colors, Iterable)
+            and not isinstance(colors, six.string_types)
+            and len(colors) == len(line_shapes)
+        ):
             for index, point in enumerate(line_shapes[:-1]):
                 start_point = point
-                end_point = line_shapes[index+1]
-                grandient_color = QtGui.QLinearGradient(start_point,end_point)
+                end_point = line_shapes[index + 1]
+                grandient_color = QtGui.QLinearGradient(start_point, end_point)
                 start_color = colors[index]
-                end_color = colors[index+1]
+                end_color = colors[index + 1]
                 grandient_color.setColorAt(0, start_color)
                 grandient_color.setColorAt(1, end_color)
                 pen = QtGui.QPen(grandient_color, width)
                 pen.setCapStyle(QtCore.Qt.RoundCap)
                 pen.setJoinStyle(QtCore.Qt.RoundJoin)
                 painter.setPen(pen)
-                painter.drawLine(start_point,end_point)
+                painter.drawLine(start_point, end_point)
         else:
             path = QtGui.QPainterPath()
             path.moveTo(line_shapes[0])
@@ -458,10 +462,12 @@ class CanvasOverlay(QtWidgets.QWidget):
             pen = QtGui.QPen(color, width)
             painter.setPen(pen)
             painter.drawPath(path)
-    
+
         painter.end()
 
     def draw_text(self, text, pos=None, color=QtCore.Qt.white, width=1):
+        if not text:
+            return
         painter = QtGui.QPainter(self)
         pen = QtGui.QPen(color, width)
         painter.setPen(pen)
@@ -562,7 +568,7 @@ class CurveBrushTool(OpenMayaMPx.MPxToolCommand):
 
     @classmethod
     def creator(cls):
-        return OpenMayaMPx.asMPxPtr( cls())
+        return OpenMayaMPx.asMPxPtr(cls())
 
     @classmethod
     def newSyntax(cls):
@@ -661,8 +667,7 @@ def try_run(name):
     try:
         yield name
     except:
-        if name:
-            sys.stderr.write("Failed to register: %s\n" % name)
+        sys.stderr.write("Failed to register: %s\n" % name)
         raise
 
 
