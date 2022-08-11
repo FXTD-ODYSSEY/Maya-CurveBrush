@@ -511,7 +511,7 @@ class CurveBrushContextCmd(OpenMayaMPx.MPxContextCommand):
 
     @staticmethod
     def creator():
-        return CurveBrushContextCmd()
+        return OpenMayaMPx.asMPxPtr(CurveBrushContextCmd())
 
     def makeObj(self):
         self.context = CurveBrushContext()
@@ -562,7 +562,7 @@ class CurveBrushTool(OpenMayaMPx.MPxToolCommand):
 
     @classmethod
     def creator(cls):
-        return cls()
+        return OpenMayaMPx.asMPxPtr( cls())
 
     @classmethod
     def newSyntax(cls):
