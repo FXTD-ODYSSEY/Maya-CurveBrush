@@ -1,20 +1,27 @@
-import random as r
+# Import future modules
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+# Import built-in modules
 import colorsys
+import math
+import os
+import random as r
+
+# Import third-party modules
 import maya.OpenMaya as om
 import maya.OpenMayaUI as omui
-import math
-
-from maya.mel import eval as mEval
 import maya.cmds as mc
+from maya.mel import eval as mEval
 from pymel.core import *
-import pymel.core.uitypes as ui
-import pymel.core.nodetypes as nt
 import pymel.core.datatypes as dt
+import pymel.core.nodetypes as nt
+import pymel.core.uitypes as ui
 import pymel.mayautils as pu
 
-import os
 
-class ApiTypes():
+class ApiTypes:
     kInvalid = 0
     kNumeric = 1
     kPlugin = 2
@@ -44,7 +51,7 @@ class ApiTypes():
 
 def getObjectMats(obj):
     sh = ls(obj, dag=1, s=1)[0]
-    at = Attribute(sh.name() + '.instObjGroups')
+    at = Attribute(sh.name() + ".instObjGroups")
     sg = ls(listConnections(at, s=1, d=1), et=nt.ShadingEngine)
     if sg:
         mats = ls(listConnections(sg, s=1, d=1), mat=1)
@@ -53,7 +60,8 @@ def getObjectMats(obj):
     else:
         at = Attribute(sh.name() + ".instObjGroups.objectGroups")
         atIds = at.get(mi=1)
-        if not atIds:return []
+        if not atIds:
+            return []
         mats = []
         for i in atIds:
             sg = ls(listConnections(at[i], s=1, d=1), et=nt.ShadingEngine)
@@ -66,59 +74,75 @@ def getObjectMats(obj):
         return mats
 
 
-
 def mayaAppDir():
-    return pu.getMayaLocation().replace('\\', '/')
+    return pu.getMayaLocation().replace("\\", "/")
+
 
 def prefsDir():
     prefsPath = pu.getUserPrefsDir()
-    prefsPath = prefsPath.replace('\\', '/')
-    prefsPath = prefsPath.replace('/prefs', '/')
+    prefsPath = prefsPath.replace("\\", "/")
+    prefsPath = prefsPath.replace("/prefs", "/")
     return prefsPath
 
+
 def Dir():
-    for p in mEval('getenv MAYA_MODULE_PATH').split(';'):
+    for p in mEval("getenv MAYA_MODULE_PATH").split(";"):
         try:
             pathes = os.listdir(p)
-        except:continue 
+        except:
+            continue
 
         for path in pathes:
-            if path == 'ysvTools':
-                return p + '/ysvTools/'
+            if path == "ysvTools":
+                return p + "/ysvTools/"
+
 
 def scriptDirToPlugDirCopy(name):
-    scriptsDir = Dir() + 'scripts/'
-    plugsDir = Dir() + 'plug-ins/'
+    scriptsDir = Dir() + "scripts/"
+    plugsDir = Dir() + "plug-ins/"
 
     path0 = scriptsDir + name
 
     if os.path.exists(path0):
-        print path0
-        f0 = open(path0, 'r')
+        print(path0)
+        f0 = open(path0, "r")
         txt = f0.read()
         f0.close()
 
-        f1 = open(plugsDir + name, 'w')
+        f1 = open(plugsDir + name, "w")
         f1.write(txt)
         f1.close
 
-        inViewMessage(amg=txt[:100], pos='topCenter', fade=1, fts=8, fst=10)
+        inViewMessage(amg=txt[:100], pos="topCenter", fade=1, fts=8, fst=10)
     else:
-        warning('{0} not foud in ysvTools scripts path'.format(name))
+        warning("{0} not foud in ysvTools scripts path".format(name))
+
 
 def decodeShortFlags():
-    currExecuter = ui.CmdScrollFieldExecuter(mEval("string $lExe = getCurrentExecuterControl()"))
+    currExecuter = ui.CmdScrollFieldExecuter(
+        mEval("string $lExe = getCurrentExecuterControl()")
+    )
     cmd = cmdScrollFieldExecuter(currExecuter, q=1, selectedText=1)
 
     splitted = cmd.split()
     cmdName = splitted[0]
-    flags = mEval('help ' + cmdName)
-    if not flags:return
-    if not 'Command Type: Command' in flags:
-        inViewMessage(msg='unkonwn command', pos='topCenter', fade=1)
+    flags = mEval("help " + cmdName)
+    if not flags:
+        return
+    if not "Command Type: Command" in flags:
+        inViewMessage(msg="unkonwn command", pos="topCenter", fade=1)
 
-    flagsTypes = ['Int', 'on|off', 'Command', 'String', 'Script', 'Float', 'Length', 'noValue']
-    flags = flags.split('Flags:')[1].split('Command Type: Command')[0].split('\n')
+    flagsTypes = [
+        "Int",
+        "on|off",
+        "Command",
+        "String",
+        "Script",
+        "Float",
+        "Length",
+        "noValue",
+    ]
+    flags = flags.split("Flags:")[1].split("Command Type: Command")[0].split("\n")
 
     flagsInfo = dict()
     for i, flag in enumerate(flags):
@@ -129,7 +153,7 @@ def decodeShortFlags():
             if len(spl) == 3:
                 typ = spl[2]
             elif len(spl) == 2:
-                typ = 'noValue'
+                typ = "noValue"
 
             flagsInfo[shrt] = (lng, typ)
 
@@ -137,9 +161,10 @@ def decodeShortFlags():
     #    print k, v
     # print splitted
     splittedShrt = splitted[:]
+
     def checkFlag(s, short):
         for flag in flagsInfo:
-            if flag == s or '-' + flagsInfo[flag][0] == s:
+            if flag == s or "-" + flagsInfo[flag][0] == s:
                 if short == 1:
                     return flag
                 else:
@@ -149,193 +174,215 @@ def decodeShortFlags():
     for i, s in enumerate(splitted):
         flag = checkFlag(s, 0)
         if flag:
-            splitted[i] = '\n' + flag + '='
+            splitted[i] = "\n" + flag + "="
         else:
-            splitted[i] = splitted[i] + ','
+            splitted[i] = splitted[i] + ","
 
     for i, s in enumerate(splittedShrt):
         flag = checkFlag(s, 1)
         if flag:
-            splittedShrt[i] = ' ' + flag[1:] + '='
+            splittedShrt[i] = " " + flag[1:] + "="
         else:
-            splittedShrt[i] = splittedShrt[i] + ','
+            splittedShrt[i] = splittedShrt[i] + ","
 
-    newCmdLong = ''.join(splitted)
-    newCmdLong = newCmdLong.replace(cmdName, cmdName + '(')
-    newCmdLong = newCmdLong.replace(';', ')')
+    newCmdLong = "".join(splitted)
+    newCmdLong = newCmdLong.replace(cmdName, cmdName + "(")
+    newCmdLong = newCmdLong.replace(";", ")")
 
-    newCmdShort = ''.join(splittedShrt)
-    newCmdShort = newCmdShort.replace(cmdName, cmdName + '(')
-    newCmdShort = newCmdShort.replace(';,', ')')
+    newCmdShort = "".join(splittedShrt)
+    newCmdShort = newCmdShort.replace(cmdName, cmdName + "(")
+    newCmdShort = newCmdShort.replace(";,", ")")
 
     # print flagsInfo
-    fldTxt = cmdScrollFieldExecuter(currExecuter, q=1, t=1).split('\n')
+    fldTxt = cmdScrollFieldExecuter(currExecuter, q=1, t=1).split("\n")
     txt = []
     for i, line in enumerate(fldTxt):
         if cmd in line:
-            txt.append(line + '\n' + newCmdShort + '\n')
+            txt.append(line + "\n" + newCmdShort + "\n")
         else:
             txt.append(line)
-    txt = '\n'.join(txt)
+    txt = "\n".join(txt)
 
     cmdScrollFieldExecuter(currExecuter, e=1, t=txt)
-    print newCmdLong, '\n\n' , newCmdShort
+    print(newCmdLong, "\n\n", newCmdShort)
+
 
 def pythonizeMM(menuFileName):
     prefsPath = pu.getUserPrefsDir()
-    prefsPath = prefsPath.replace('\\', '/')
+    prefsPath = prefsPath.replace("\\", "/")
 
-    path = prefsPath + '/markingMenus/' + menuFileName + '.mel'
+    path = prefsPath + "/markingMenus/" + menuFileName + ".mel"
 
-    f = open(path, 'r')
+    f = open(path, "r")
     txt = f.read()
-    f.close()  
+    f.close()
 
-    items = txt.split('menuItem')
+    items = txt.split("menuItem")
     for i, item in enumerate(items):
         if '-command "#python' in item:
-            items[i] = item.replace('-sourceType \"mel\"', '-sourceType \"python\"')
+            items[i] = item.replace('-sourceType "mel"', '-sourceType "python"')
 
-    txt = 'menuItem'.join(items)
-    f = open(path, 'w')
+    txt = "menuItem".join(items)
+    f = open(path, "w")
     f.write(txt)
     f.close()
-    print menuFileName, 'pythonized'
+    print(menuFileName, "pythonized")
+
 
 def pmH(pmType):
-    try:pmModule = getattr(pmType, '__dict__')['__module__']
-    except:pmModule = getattr(pmType, '__module__')
+    try:
+        pmModule = getattr(pmType, "__dict__")["__module__"]
+    except:
+        pmModule = getattr(pmType, "__module__")
 
-    pmName = getattr(pmType, '__name__')
-    pmClass = str(getattr(pmType, '__class__')).split(' ')
+    pmName = getattr(pmType, "__name__")
+    pmClass = str(getattr(pmType, "__class__")).split(" ")
     # print str(getattr(pmType, '__class__'))
-    cls = ''
-    if pmClass[0] == '<class':
-        cls = 'classes'
-    elif pmClass[0] == '<type' and pmClass[1] == '\'function\'>':
-        cls = 'functions'
+    cls = ""
+    if pmClass[0] == "<class":
+        cls = "classes"
+    elif pmClass[0] == "<type" and pmClass[1] == "'function'>":
+        cls = "functions"
     else:
         pass
-    print 'module:', pmModule
-    print 'class:', pmClass
-    print 'module:', pmName
-    print 'decoded class:', cls
+    print("module:", pmModule)
+    print("class:", pmClass)
+    print("module:", pmName)
+    print("decoded class:", cls)
 
-        # pmClass = str(type(pmType)).split()
+    # pmClass = str(type(pmType)).split()
 
     if cls and pmModule and pmName:
         mayaLocation = mayaAppDir()
-        docsPath = mayaLocation + '/docs/en_US'
+        docsPath = mayaLocation + "/docs/en_US"
         # docsPath = 'C:/Program Files/Autodesk/Maya2015/docs/en_US'
-        docsPath += '/PyMel/generated'
-        docsPath += '/' + cls
-        docsPath += '/' + pmModule
-        docsPath += '/' + pmModule
-        docsPath += '.' + pmName
-        docsPath += '.html'
+        docsPath += "/PyMel/generated"
+        docsPath += "/" + cls
+        docsPath += "/" + pmModule
+        docsPath += "/" + pmModule
+        docsPath += "." + pmName
+        docsPath += ".html"
 
-        print docsPath
+        print(docsPath)
         showHelp(docsPath, docs=1, a=1)
 
     else:
-        print 'class string:', cls
-        print 'module:', pmModule
-        print 'pmName:', pmName
-        print 'pmClass attribute', pmClass
+        print("class string:", cls)
+        print("module:", pmModule)
+        print("pmName:", pmName)
+        print("pmClass attribute", pmClass)
 
 
 def whatIs(procName, inMaya=0):
-    lay = mEval('string $lExe = $gLastFocusedCommandExecuter;')
+    lay = mEval("string $lExe = $gLastFocusedCommandExecuter;")
     formL = ui.CmdScrollFieldExecuter(lay).parent()
     tabL = formL.parent()
 
-    procInfo = mEval('whatIs ' + procName)
-    print procInfo
-    if procInfo.startswith('Mel procedure found in: ') or procInfo.startswith('Script found in: '):
-        fPath = procInfo.split('in: ')[1]
-        txt = ''
-        f = open(fPath, 'r')
+    procInfo = mEval("whatIs " + procName)
+    print(procInfo)
+    if procInfo.startswith("Mel procedure found in: ") or procInfo.startswith(
+        "Script found in: "
+    ):
+        fPath = procInfo.split("in: ")[1]
+        txt = ""
+        f = open(fPath, "r")
         for line in f:
             txt += line
         f.close()
 
         ex = False
         for ch in tabL.children():
-            if ex:break
+            if ex:
+                break
             for executer in ui.FormLayout(ch).children():
                 # print executer.getSourceType()
-                if ex:break
-                if executer.getSourceType() == 'mel':
-                    print '***************************'
+                if ex:
+                    break
+                if executer.getSourceType() == "mel":
+                    print("***************************")
                     if inMaya:
                         executer.clear()
                         executer.insertText(txt)
-                        print 'loading file in first mel tab'
+                        print("loading file in first mel tab")
                     else:
-                        print 'loading file in notepad(++):'
+                        print("loading file in notepad(++):")
                         os.startfile(fPath)
-                    print '***************************'
+                    print("***************************")
                     ex = True
-    elif procInfo.startswith('Command'):
+    elif procInfo.startswith("Command"):
         pFlags(procName)
 
+
 def pmHelp():
-    currExecuter = ui.CmdScrollFieldExecuter(mEval("string $lExe = getCurrentExecuterControl()"))
+    currExecuter = ui.CmdScrollFieldExecuter(
+        mEval("string $lExe = getCurrentExecuterControl()")
+    )
     txt = cmdScrollFieldExecuter(currExecuter, q=1, selectedText=1)
-    eval('python(\"pmH({0})\") '.format(txt))  
+    eval('python("pmH({0})") '.format(txt))
+
 
 def rapidScriptOpen():
-    currExecuter = ui.CmdScrollFieldExecuter(mEval("string $lExe = getCurrentExecuterControl()"))
+    currExecuter = ui.CmdScrollFieldExecuter(
+        mEval("string $lExe = getCurrentExecuterControl()")
+    )
     txt = cmdScrollFieldExecuter(currExecuter, q=1, selectedText=1)
-    eval('python(\"whatIs(\'{0}\')\") '.format(txt))
+    eval("python(\"whatIs('{0}')\") ".format(txt))
+
 
 def pFlags(txt=None):
     if not txt:
-        currExecuter = ui.CmdScrollFieldExecuter(mEval("string $lExe = getCurrentExecuterControl()"))
+        currExecuter = ui.CmdScrollFieldExecuter(
+            mEval("string $lExe = getCurrentExecuterControl()")
+        )
         txt = cmdScrollFieldExecuter(currExecuter, q=1, selectedText=1)
 
-    for flag in mEval('help {0}'.format(txt)).split('Flags:')[1].split('\n'):
-        print flag  
+    for flag in mEval("help {0}".format(txt)).split("Flags:")[1].split("\n"):
+        print(flag)
+
 
 def sourceIfUnknown(proc, scriptName):
     allMelProcs = mc.melInfo()
     if not proc in allMelProcs:
-        mEval('source ' + scriptName)
+        mEval("source " + scriptName)
+
 
 def writeFileIds(idFileName):
-    plugDir = Dir() + 'plug-ins/'
-    fTxt = ''
+    plugDir = Dir() + "plug-ins/"
+    fTxt = ""
     plugIdInfo = []
 
-    fNames = [fName for fName in os.listdir(plugDir) if fName.endswith('.py')]
+    fNames = [fName for fName in os.listdir(plugDir) if fName.endswith(".py")]
     for fName in fNames:
-        if fName == idFileName: continue
+        if fName == idFileName:
+            continue
 
         fPath = os.path.join(plugDir, fName)
 
-        with open(fPath, 'r') as f:
+        with open(fPath, "r") as f:
             ids = []
             for line in f:
-                if 'MTypeId' in line:
-                    id = line.split('MTypeId')[1][1:8]
+                if "MTypeId" in line:
+                    id = line.split("MTypeId")[1][1:8]
                     ids.append(id)
             if not ids:
-                ids = ['______NO IDS_____']
+                ids = ["______NO IDS_____"]
             plugIdInfo.append((fName, ids))
 
     plugIdInfo.sort(key=lambda x: x[1][0])
     for info in plugIdInfo:
         fName, ids = info
-        fTxt += '\n\'\'\' {0} \n\t'.format(fName)
+        fTxt += "\n''' {0} \n\t".format(fName)
         for id in ids:
-            fTxt += id + '    '
-        fTxt += '\n\'\'\''
+            fTxt += id + "    "
+        fTxt += "\n'''"
 
     idsFile = plugDir + idFileName
-    with open(idsFile, 'w') as f:
+    with open(idsFile, "w") as f:
         f.write(fTxt)
-    print (fTxt)
-#------------------------------ REF PlANEs
+    print(fTxt)
+
+
+# ------------------------------ REF PlANEs
 def TexturedPlane():
     fileTexNodes = mc.ls(sl=1, dag=1, et="file")
     if not fileTexNodes:
@@ -344,9 +391,11 @@ def TexturedPlane():
         sx = mc.getAttr(f + ".osx")
         sy = mc.getAttr(f + ".osy")
         plane = mc.polyPlane(ch=1, w=sx, h=sy, sw=1, sh=1, cuv=2)
-        mc.polyProjection(ch=1, type="Planar", ibd=1, icx=0.5, icy=0.5, ra=0, isu=1, isv=1, md="y")
+        mc.polyProjection(
+            ch=1, type="Planar", ibd=1, icx=0.5, icy=0.5, ra=0, isu=1, isv=1, md="y"
+        )
 
-        mat = mc.shadingNode('lambert', asShader=1)
+        mat = mc.shadingNode("lambert", asShader=1)
         mc.select(plane, r=1)
         mc.hyperShade(assign=mat)
         mc.connectAttr(f + ".outColor", mat + ".color")
@@ -355,9 +404,14 @@ def TexturedPlane():
 
         mc.FreezeTransformations(plane[0])
         bb = mc.xform(plane[0], q=1, bb=1, ws=1)
-        mc.xform(plane[0], sp=((bb[0] + bb[3]) / 2, bb[1], bb[2]), rp=(((bb[0] + bb[3]) / 2, bb[1], bb[2])))
+        mc.xform(
+            plane[0],
+            sp=((bb[0] + bb[3]) / 2, bb[1], bb[2]),
+            rp=(((bb[0] + bb[3]) / 2, bb[1], bb[2])),
+        )
 
         mc.move(0, 0, 0, plane, rpr=1)
+
 
 def FilterCornerVerts():
     sel = ls(sl=1, fl=1)
@@ -371,20 +425,21 @@ def FilterCornerVerts():
     for v in verts:
         edges = ls(polyListComponentConversion(v, te=1), fl=1)
         if len([e for e in edges if e in hardEdges]) == 3:
-            cornerVerts.append(v)        
+            cornerVerts.append(v)
     select(cl=1)
     hilite(hl)
     select(cornerVerts)
 
     mc.ConvertSelectionToVertices()
 
-#===============================================================================
+
+# ===============================================================================
 # def getRedundEdge(v, angle=3):
 #     e1, e2, e3 = v.connectedEdges()
 #     vec1 = e1.getPoint(0) - e1.getPoint(1)
 #     vec2 = e2.getPoint(0) - e2.getPoint(1)
 #     vec3 = e3.getPoint(0) - e3.getPoint(1)
-#     
+#
 #     if abs(math.degrees(vec1.angle(vec2))) < angle:
 #         return e3.index()
 #     elif abs(math.degrees(vec1.angle(vec3))) < angle:
@@ -393,29 +448,29 @@ def FilterCornerVerts():
 #         return e1.index()
 #     else:
 #         return False
-#     
+#
 # def cleanupBoolEdgeLoops(verts=None, angle=3):
 #     mc.ConvertSelectionToVertices()
 #     verts = SEL.verts()
-#     
+#
 #     edgeIds = []
-#     
-#     
+#
+#
 #     for vComp in verts:
 #         for v in vComp:
 #             num = v.numConnectedEdges()
 #             if not num == 3: continue
-#         
+#
 #             # edges = ls(v.connectedEdges(), fl=1)
 #             edgeId = getRedundEdge(v, angle)
 #             if edgeId:
 #                 edgeIds.append(edgeId)
-#     
-#     if edgeIds:    
+#
+#     if edgeIds:
 #         select(verts[0].node().e[edgeIds])
 #     else:
 #         select(cl=1)
-#===============================================================================
+# ===============================================================================
 
 
 def FilterWrongCornerVerts():
@@ -428,7 +483,8 @@ def FilterWrongCornerVerts():
     wrongCornerVerts = []
     FilterCreasedEdges(3)
     creasedEdges = ls(sl=1, fl=1)
-    if not creasedEdges:return
+    if not creasedEdges:
+        return
 
     for v in sel:
         edges = ls(polyListComponentConversion(v, te=1), fl=1)
@@ -443,15 +499,16 @@ def FilterWrongCornerVerts():
     select(wrongCornerVerts)
     mc.ConvertSelectionToVertices()
 
+
 def filterCurveCorners():
     crvs = ls(sl=1, dag=1, et=nt.NurbsCurve)
     cornerParams = []
     for crv in crvs:
         params = []
         for cv in crv.cv:
-            cvPos = cv.getPosition('world')
-            closPnt = crv.closestPoint(cvPos, tolerance=0.01, space='world')
-            param = crv.getParamAtPoint(closPnt, 'world')
+            cvPos = cv.getPosition("world")
+            closPnt = crv.closestPoint(cvPos, tolerance=0.01, space="world")
+            param = crv.getParamAtPoint(closPnt, "world")
             params.append(param)
 
         for i, param in enumerate(params[1:-1]):
@@ -498,6 +555,7 @@ def FilterHardEdges():
     polySelectConstraint(dis=1)
     select(edges)
 
+
 def FilterCreasedEdges(value):
     hl = ls(hl=1)
     sl = ls(sl=1, o=1)
@@ -507,9 +565,10 @@ def FilterCreasedEdges(value):
     edges = ls(edges, fl=1)
     for e in edges:
         if polyCrease(e, q=1, v=1)[0] >= value:
-            creasedEdges.append(e)    
+            creasedEdges.append(e)
     hilite(hl)
-    select(creasedEdges)  
+    select(creasedEdges)
+
 
 def TriangulateObjects(objs):
     allSel = ls(sl=1)
@@ -523,11 +582,12 @@ def TriangulateObjects(objs):
 
     elif ls(sl=1):
         polySelectConstraint(m=3, t=8, sz=3)
-        polyTriangulate(ch=0)        
+        polyTriangulate(ch=0)
 
     polySelectConstraint(m=0)
     polySelectConstraint(dis=1)
     select(allSel)
+
 
 def rndPhong(object=None):
     sel0 = ls(sl=1)
@@ -535,18 +595,19 @@ def rndPhong(object=None):
     if object:
         select(object)
 
-    mEval('createAndAssignShader phong \"\"')
+    mEval('createAndAssignShader phong ""')
     hyperShade(smn=1)
     mat = ls(sl=1, mat=1)[0]
 
     hue = r.random()
     saturation = r.random() * 0.2 + 0.2
-    col = colorsys.hsv_to_rgb(hue, saturation, .8)
+    col = colorsys.hsv_to_rgb(hue, saturation, 0.8)
 
     mat.color.set(col)
 
     select(sel0)
     hilite(hil)
+
 
 def whitePhong(object=None):
     sel0 = ls(sl=1)
@@ -554,7 +615,7 @@ def whitePhong(object=None):
     if object:
         select(object)
 
-    mEval('createAndAssignShader phong \"\"')
+    mEval('createAndAssignShader phong ""')
     hyperShade(smn=1)
     mat = ls(sl=1, mat=1)[0]
 
@@ -563,9 +624,12 @@ def whitePhong(object=None):
     select(sel0)
     hilite(hil)
 
-def gozPrepare():    
+
+def gozPrepare():
     objs = ls(sl=1, o=1)
-    mEval('polyCleanupArgList 3 { \"0\",\"2\",\"1\",\"0\",\"1\",\"0\",\"0\",\"0\",\"0\",\"1e-005\",\"0\",\"1e-005\",\"0\",\"1e-006\",\"0\",\"-1\",\"0\" };')
+    mEval(
+        'polyCleanupArgList 3 { "0","2","1","0","1","0","0","0","0","1e-005","0","1e-005","0","1e-006","0","-1","0" };'
+    )
     TriangulateObjects(objs)
 
     for obj in objs:
@@ -576,34 +640,39 @@ def gozPrepare():
 
     select(objs)
 
+
 def gozExport():
-    currentUnit(l='meter')
-    mEval ('source GoZBrushFromMaya.mel;')
-    currentUnit(l='centimeter')
+    currentUnit(l="meter")
+    mEval("source GoZBrushFromMaya.mel;")
+    currentUnit(l="centimeter")
+
 
 def generateZImportScript(fPath):
     objs = ls(sl=1, o=1)
     # fPath = 'D:/Export/ToZ/'
-    cmd = ''
+    cmd = ""
     # cmd += '[IPress,Tool:Make PolyMesh3D] \n'
     cmd += '[IButton,TempImport,"Press to play ", \n'
 
-
     for obj in objs:
-        name = obj.shortName().replace('|', '')
-        name = (fPath + name).replace('/', '\\')
-        zName = name + '.ma'
+        name = obj.shortName().replace("|", "")
+        name = (fPath + name).replace("/", "\\")
+        zName = name + ".ma"
 
-        cmd += '[FileNameSetNext,\"' + zName + '\"][IPress,Tool:Import] \n'
-        cmd += '[IPress,Tool:SubTool:Duplicate] \n'
-        cmd += '[IPress,Tool:SubTool:SelectDown] \n'
+        cmd += '[FileNameSetNext,"' + zName + '"][IPress,Tool:Import] \n'
+        cmd += "[IPress,Tool:SubTool:Duplicate] \n"
+        cmd += "[IPress,Tool:SubTool:SelectDown] \n"
 
-    cmd += ']'
+    cmd += "]"
 
-    filePath = 'C:\\Program Files (x86)\\Pixologic\\ZBrush 4R6\\ZScripts\\' + '___multiImportScript.txt'
-    f = open(filePath, 'w')
+    filePath = (
+        "C:\\Program Files (x86)\\Pixologic\\ZBrush 4R6\\ZScripts\\"
+        + "___multiImportScript.txt"
+    )
+    f = open(filePath, "w")
     f.write(cmd)
     f.close
+
 
 def zExportMulti(fPath):
     for f in os.listdir(fPath):
@@ -612,50 +681,64 @@ def zExportMulti(fPath):
     objs = ls(sl=1, o=1)
     for obj in objs:
         select(obj)
-        name = obj.shortName().replace('|', '')
+        name = obj.shortName().replace("|", "")
         mc.file(fPath + name, f=1, options="v=0;p=17;f=0", typ="mayaAscii", pr=1, es=1)
     select(objs)
 
     generateZImportScript(fPath)
 
+
 def sendSelectionToModo():
-    try:		
+    try:
+        # Import third-party modules
         import ModoSock
-        lx = ModoSock.ModoSock('127.0.0.1', 8820)
-    except: pass
+
+        lx = ModoSock.ModoSock("127.0.0.1", 8820)
+    except:
+        pass
 
     try:
         meshes = ls(sl=1, dag=1, ni=1, et=nt.Mesh)
         for mesh in meshes:
             select(mesh, r=1)
             fPath = "D:\\Export\\{0}.obj".format(mesh.getParent().longName())
-            fPath = fPath.replace('|', '_')
-            print fPath
-            mc.file(fPath, es=1, f=1, op="groups=1;ptgroups=1;materials=1;smoothing=1;normals=1", typ="OBJexport", pr=1)  
+            fPath = fPath.replace("|", "_")
+            print(fPath)
+            mc.file(
+                fPath,
+                es=1,
+                f=1,
+                op="groups=1;ptgroups=1;materials=1;smoothing=1;normals=1",
+                typ="OBJexport",
+                pr=1,
+            )
 
-
-            lx.eval('scene.open \"{0}\" import'.format(fPath))
+            lx.eval('scene.open "{0}" import'.format(fPath))
         lx.close()
 
     except:
-        print 'something wrong'
+        print("something wrong")
         raise
 
-def setComponentAttr(attr, compLabel, ids, fromOtherCompAttr = False):
-    if not fromOtherCompAttr:
-        compsStr = str.join(', ', ['\'{0}[{1}]\''.format(compLabel, id) for id in ids])
-    else:
-        compsStr = str.join(', ', ['\'{0}\''.format(id) for id in ids])
 
-    cmd = 'Attribute(\'{0}\').set({1}, {2}, type=\'componentList\') '.format(attr.__str__(),  len(ids), compsStr)
-    print cmd
+def setComponentAttr(attr, compLabel, ids, fromOtherCompAttr=False):
+    if not fromOtherCompAttr:
+        compsStr = str.join(", ", ["'{0}[{1}]'".format(compLabel, id) for id in ids])
+    else:
+        compsStr = str.join(", ", ["'{0}'".format(id) for id in ids])
+
+    cmd = "Attribute('{0}').set({1}, {2}, type='componentList') ".format(
+        attr.__str__(), len(ids), compsStr
+    )
+    print(cmd)
     eval(cmd)
 
-#---------------------------------------------------------------------------------------------------------
-#-------------------------------                   Geometry------------------------------------------------------------
+
+# ---------------------------------------------------------------------------------------------------------
+# -------------------------------                   Geometry------------------------------------------------------------
 def edgeToPointDist(edge, point):
-    v0 = edge.getPoint(0, space='world')
-    v1 = edge.getPoint(1, space='world')
+    v0 = edge.getPoint(0, space="world")
+    v1 = edge.getPoint(1, space="world")
 
     edgeVec = v0 - v1
     pnt2EdgeVec = v0 - point
@@ -663,38 +746,43 @@ def edgeToPointDist(edge, point):
     dist = (edgeVec.cross(pnt2EdgeVec).length()) / edge.length()
 
     return dist
-#-----------------------------------------------------------------------
-#---------------------------------                Hotkeys----------------------------
+
+
+# -----------------------------------------------------------------------
+# ---------------------------------                Hotkeys----------------------------
 def IncrementAndSave():
 
     fullPath = mc.file(q=1, l=1)[0]
 
     fPath, name = os.path.split(fullPath)
 
-    name = name.replace('.', '_', name.count('.') - 1)
+    name = name.replace(".", "_", name.count(".") - 1)
 
-    shName = name.split('.')[0]
+    shName = name.split(".")[0]
 
-    if shName == 'untitled':
+    if shName == "untitled":
         mc.SaveSceneAs()
     else:
         newName = None
-        try:ext = name.split('.')[1]
-        except:ext = None
+        try:
+            ext = name.split(".")[1]
+        except:
+            ext = None
 
-        lastDigits = ''
+        lastDigits = ""
         for ch in reversed(shName):
-            if not ch.isdigit():break
+            if not ch.isdigit():
+                break
             lastDigits += ch
 
         if lastDigits:
-            lD = ''
+            lD = ""
             for ch in reversed(lastDigits):
                 lD += ch
 
             nextIndex = int(lD) + 1
             nextIndex = str(nextIndex).zfill(4)
-            newShName = shName[0:-len(lD)] + nextIndex + "." + ext
+            newShName = shName[0 : -len(lD)] + nextIndex + "." + ext
 
         else:
             newShName = shName + "_0001." + ext
@@ -705,9 +793,15 @@ def IncrementAndSave():
             try:
                 mc.file(rename=newName)
                 mc.file(save=1)
-                inViewMessage(amg='<h1>{0}</h1>'.format(newShName), pos='topCenter', fade=True)
+                inViewMessage(
+                    amg="<h1>{0}</h1>".format(newShName), pos="topCenter", fade=True
+                )
             except:
-                inViewMessage(amg='<h1>failed to save {0}</h1>'.format(newShName), pos='topCenter', fade=True)
+                inViewMessage(
+                    amg="<h1>failed to save {0}</h1>".format(newShName),
+                    pos="topCenter",
+                    fade=True,
+                )
 
 
 def projectPoints():
@@ -715,7 +809,8 @@ def projectPoints():
     hil = ls(hl=1)
 
     liveMesh = ls(lv=1)
-    if liveMesh:liveMesh = liveMesh[0]
+    if liveMesh:
+        liveMesh = liveMesh[0]
 
     selMeshes = ls(sl=1, dag=1, et=nt.Mesh)
 
@@ -725,10 +820,10 @@ def projectPoints():
     # print selNext
 
     cvs = [s for s in sel if type(s) == NurbsCurveCV]
-    curves = ls(selNext, dag=1, et=nt.NurbsCurve) 
+    curves = ls(selNext, dag=1, et=nt.NurbsCurve)
 
-    if  curves or cvs:
-        print 'projecting curves'
+    if curves or cvs:
+        print("projecting curves")
         if liveMesh:
             projectsCVsToMesh(curves + cvs, liveMesh)
         elif selMeshes:
@@ -741,10 +836,11 @@ def projectPoints():
             mc.ConvertSelectionToVertices()
             verts = [v for v in ls(sl=1) if type(v) == MeshVertex]
             select(verts)
-            mEval('dR_shrinkWrap')
+            mEval("dR_shrinkWrap")
 
     select(sel)
-    hilite(hil)        
+    hilite(hil)
+
 
 def projectsCVsToMesh(sel, mesh=None):
     curves = ls(sel, dag=1, et=nt.NurbsCurve)
@@ -752,24 +848,27 @@ def projectsCVsToMesh(sel, mesh=None):
 
     cvCurves = set()
     for cv in ls(cvs, fl=1):
-        cvCurves.add(cv.node()) 
+        cvCurves.add(cv.node())
     allCurves = curves + list(cvCurves)
 
     if not mesh:
-        for c in allCurves:c.updateCurve()
+        for c in allCurves:
+            c.updateCurve()
         return
 
     for crv in curves:
         cvs += [crv.cv]
 
     for cv in ls(cvs, fl=1):
-        newPos, id = mesh.getClosestPoint(cv.getPosition(space='world'), space='world')
-        cv.setPosition(newPos, space='world')
+        newPos, id = mesh.getClosestPoint(cv.getPosition(space="world"), space="world")
+        cv.setPosition(newPos, space="world")
 
-    for c in allCurves:c.updateCurve()
+    for c in allCurves:
+        c.updateCurve()
 
-#---------------------------------------- ----------------------------------------
-#------------------------                    Sketches Pipe ----------------------------------------
+
+# ---------------------------------------- ----------------------------------------
+# ------------------------                    Sketches Pipe ----------------------------------------
 def reloadFileTextures():
     for obj in ls(sl=1, o=1):
         mats = getObjectMats(obj)
@@ -778,72 +877,79 @@ def reloadFileTextures():
             for fileNode in fileNodes:
                 fileNode.ftn.set(fileNode.ftn.get())
 
+
 def openTexture():
     objs = ls(sl=1, o=1)
     if objs:
         obj = objs[0]
-    else:return
+    else:
+        return
 
     mats = getObjectMats(obj)
-    if mats:mat = mats[0]
-    else:return
+    if mats:
+        mat = mats[0]
+    else:
+        return
 
     if type(mat) == nt.SurfaceShader:
-        matColorAt = 'outColor'
+        matColorAt = "outColor"
     else:
-        matColorAt = 'color'
+        matColorAt = "color"
 
     texNode = listConnections(mat.attr(matColorAt), s=1, d=0)
-    if texNode:texNode = texNode[0]
-    else:return
+    if texNode:
+        texNode = texNode[0]
+    else:
+        return
 
     filePath = texNode.ftn.get()
 
     os.startfile(filePath)
 
+
 def renderOpenInSkchBook(toQImpDir=False):
     # mEval(' system(\"TASKKILL /F /IM SketchBookPro.exe \") ')
 
-    PyNode('defaultRenderGlobals').imageFormat.set(3)  # tiff format
+    PyNode("defaultRenderGlobals").imageFormat.set(3)  # tiff format
 
-    PyNode('defaultResolution').width.set(1024)
-    PyNode('defaultResolution').height.set(1024)
-    PyNode('defaultResolution').deviceAspectRatio.set(1)     
+    PyNode("defaultResolution").width.set(1024)
+    PyNode("defaultResolution").height.set(1024)
+    PyNode("defaultResolution").deviceAspectRatio.set(1)
 
-    mEval('renderIntoNewWindow render')
+    mEval("renderIntoNewWindow render")
 
-    fName = mc.file(q=1, l=1)[0].split('/')[-1]
+    fName = mc.file(q=1, l=1)[0].split("/")[-1]
     projPath = workspace(q=1, rd=1)
-    if not fName == 'untitled':
+    if not fName == "untitled":
         fName = fName.split(".mb")[0]
 
-
-    tmpRenderFilePath = projPath + 'images/tmp/' + fName + '.tif'
+    tmpRenderFilePath = projPath + "images/tmp/" + fName + ".tif"
 
     if toQImpDir:
-        filePath = Dir() + 'QImport/textures/quickImportRefPlane.tif'
+        filePath = Dir() + "QImport/textures/quickImportRefPlane.tif"
     else:
-        srcImDir = workspace(q=1, rd=1) + 'sourceimages/Doodles/'
-        try:os.mkdir(srcImDir)
-        except:pass
+        srcImDir = workspace(q=1, rd=1) + "sourceimages/Doodles/"
+        try:
+            os.mkdir(srcImDir)
+        except:
+            pass
 
-        files = [f for f in os.listdir(srcImDir) if 'doodle_' in f]
+        files = [f for f in os.listdir(srcImDir) if "doodle_" in f]
         i = 1
-        fDupPath = 'doodle_1.tif'
-        while(fDupPath in files):
+        fDupPath = "doodle_1.tif"
+        while fDupPath in files:
             i += 1
-            fDupPath = 'doodle_{0}.tif'.format(i)
+            fDupPath = "doodle_{0}.tif".format(i)
 
         fDupPath = srcImDir + fDupPath
 
         filePath = fDupPath
 
-
-    f0 = file(tmpRenderFilePath, 'r')
+    f0 = file(tmpRenderFilePath, "r")
     txt = f0.read()
     f0.close()
 
-    f1 = file(filePath, 'w')
+    f1 = file(filePath, "w")
     f1.write(txt)
     f1.close()
 
@@ -861,49 +967,56 @@ def renderOpenInSkchBook(toQImpDir=False):
         hyperShade(assign=newMat)
 
         if getPanel(typeOf=getPanel(wf=1)) == "modelPanel":
-            modelEditor(getPanel(wf=1), e=1, da='smoothShaded', dtx=1, dl='default')
+            modelEditor(getPanel(wf=1), e=1, da="smoothShaded", dtx=1, dl="default")
 
-    deleteUI('renderViewWindow')
+    deleteUI("renderViewWindow")
     os.startfile(filePath)
 
-def duplicateConnectedTextures():
-    srcImDir = workspace(q=1, rd=1) + 'sourceimages/Doodles/'
-    try:os.mkdir(srcImDir)
-    except:pass
 
-    files = [f for f in os.listdir(srcImDir) if 'doodle_' in f]
+def duplicateConnectedTextures():
+    srcImDir = workspace(q=1, rd=1) + "sourceimages/Doodles/"
+    try:
+        os.mkdir(srcImDir)
+    except:
+        pass
+
+    files = [f for f in os.listdir(srcImDir) if "doodle_" in f]
     objs = ls(sl=1, o=1)
 
     for obj in objs:
         mat = getObjectMats(obj)
-        if mat:mat = mat[0]
-        if not mat:continue
+        if mat:
+            mat = mat[0]
+        if not mat:
+            continue
 
         if type(mat) == nt.SurfaceShader:
-            matColorAt = 'outColor'
+            matColorAt = "outColor"
         else:
-            matColorAt = 'color'
+            matColorAt = "color"
 
         fileNode = listConnections(mat.attr(matColorAt), type=nt.File, s=1, d=0)
-        if fileNode:fileNode = fileNode[0]
-        if not fileNode:continue
+        if fileNode:
+            fileNode = fileNode[0]
+        if not fileNode:
+            continue
 
         fPath = fileNode.ftn.get()
-        print fPath
+        print(fPath)
 
-        fSrc = open(fPath, 'r')
+        fSrc = open(fPath, "r")
         txt = fSrc.read()
         fSrc.close()
 
         i = 1
-        fDupPath = 'doodle_1.tif'
-        while(fDupPath in files):
+        fDupPath = "doodle_1.tif"
+        while fDupPath in files:
             i += 1
-            fDupPath = 'doodle_{0}.tif'.format(i)
+            fDupPath = "doodle_{0}.tif".format(i)
 
         fDupPath = srcImDir + fDupPath
 
-        fDup = open(fDupPath, 'w')
+        fDup = open(fDupPath, "w")
         fDup.write(txt)
         fDup.close()
 
@@ -916,169 +1029,272 @@ def duplicateConnectedTextures():
         select(obj)
         hyperShade(assign=newMat)
 
-        print files
-        print fDupPath
+        print(files)
+        print(fDupPath)
     select(objs)
 
+
 def clearDoodleTextures():
-    srcImDir = workspace(q=1, rd=1) + 'sourceimages/'
-    try:os.mkdir(srcImDir)
-    except:pass
+    srcImDir = workspace(q=1, rd=1) + "sourceimages/"
+    try:
+        os.mkdir(srcImDir)
+    except:
+        pass
 
-    srcImDir += 'Doodles/'
-    try:os.mkdir(srcImDir)
-    except:pass
+    srcImDir += "Doodles/"
+    try:
+        os.mkdir(srcImDir)
+    except:
+        pass
 
-    files = [f for f in os.listdir(srcImDir) if 'doodle_' in f]
+    files = [f for f in os.listdir(srcImDir) if "doodle_" in f]
     for f in files:
-        try:os.remove(srcImDir + f)
-        except:print 'skippedFile: ', f
+        try:
+            os.remove(srcImDir + f)
+        except:
+            print("skippedFile: ", f)
+
 
 def doodleTexPopup():
-    srcImDir = workspace(q=1, rd=1) + 'sourceimages/'
-    try:os.mkdir(srcImDir)
-    except:pass
+    srcImDir = workspace(q=1, rd=1) + "sourceimages/"
+    try:
+        os.mkdir(srcImDir)
+    except:
+        pass
 
-    srcImDir += 'Doodles/'
-    try:os.mkdir(srcImDir)
-    except:pass
+    srcImDir += "Doodles/"
+    try:
+        os.mkdir(srcImDir)
+    except:
+        pass
 
-    files = [f for f in os.listdir(srcImDir) if 'doodle_' in f]
+    files = [f for f in os.listdir(srcImDir) if "doodle_" in f]
 
     for f in files:
-        menuItem(p='tempMM', l=f, c=Callback(os.startfile, srcImDir + f))
+        menuItem(p="tempMM", l=f, c=Callback(os.startfile, srcImDir + f))
 
-#-----------------------------------------------------------------------
-#--------------------------           QuickImports----------------------------
+
+# -----------------------------------------------------------------------
+# --------------------------           QuickImports----------------------------
 def qImportDir():
     ysvToolsDir = Dir()
-    return ysvToolsDir + 'QImport/'
+    return ysvToolsDir + "QImport/"
+
 
 def importColorMasks():
-    path = qImportDir() + 'scenes/ColorMasksMaterials.mb'
+    path = qImportDir() + "scenes/ColorMasksMaterials.mb"
     mc.file(path, i=1, typ="mayaBinary", iv=1, ra=1, options="v=1;", pr=1, lrd="all")
 
-def rapidRefPlaneImport():
-    path = qImportDir() + 'scenes/refPlane.mb'
-    mc.file(path, i=1, type="mayaBinary")    
 
-class SEL():
-    @staticmethod        
+def rapidRefPlaneImport():
+    path = qImportDir() + "scenes/refPlane.mb"
+    mc.file(path, i=1, type="mayaBinary")
+
+
+class SEL:
+    @staticmethod
     def curves(sel=None):
-        if sel: return ls(filterExpand(sel, sm=9))
-        else: return ls(filterExpand(sm=9))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=9))
+        else:
+            return ls(filterExpand(sm=9))
+
+    @staticmethod
     def surfaces(sel=None):
-        if sel: return ls(filterExpand(sel, sm=10))
-        else: return ls(filterExpand(sm=10))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=10))
+        else:
+            return ls(filterExpand(sm=10))
+
+    @staticmethod
     def cosCurves(sel=None):
-        if sel: return ls(filterExpand(sel, sm=11))
-        else: return ls(filterExpand(sm=11))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=11))
+        else:
+            return ls(filterExpand(sm=11))
+
+    @staticmethod
     def polygons(sel=None):
-        if sel: return ls(filterExpand(sel, sm=12))
-        else: return ls(filterExpand(sm=12))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=12))
+        else:
+            return ls(filterExpand(sm=12))
+
+    @staticmethod
     def cvs(sel=None):
-        if sel: return ls(filterExpand(sel, sm=28))
-        else: return ls(filterExpand(sm=28))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=28))
+        else:
+            return ls(filterExpand(sm=28))
+
+    @staticmethod
     def ep(sel=None):
-        if sel: return ls(filterExpand(sel, sm=30))
-        else: return ls(filterExpand(sm=30))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=30))
+        else:
+            return ls(filterExpand(sm=30))
+
+    @staticmethod
     def verts(sel=None):
-        if sel: return ls(filterExpand(sel, sm=31))
-        else: return ls(filterExpand(sm=31))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=31))
+        else:
+            return ls(filterExpand(sm=31))
+
+    @staticmethod
     def edges(sel=None):
-        if sel: return ls(filterExpand(sel, sm=32))
-        else: return ls(filterExpand(sm=32))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=32))
+        else:
+            return ls(filterExpand(sm=32))
+
+    @staticmethod
     def faces(sel=None):
-        if sel: return ls(filterExpand(sel, sm=34))
-        else: return ls(filterExpand(sm=34))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=34))
+        else:
+            return ls(filterExpand(sm=34))
+
+    @staticmethod
     def uvs(sel=None):
-        if sel: return ls(filterExpand(sel, sm=35))
-        else: return ls(filterExpand(sm=35))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=35))
+        else:
+            return ls(filterExpand(sm=35))
+
+    @staticmethod
     def subPnts(sel=None):
-        if sel: return ls(filterExpand(sel, sm=36))
-        else: return ls(filterExpand(sm=36))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=36))
+        else:
+            return ls(filterExpand(sm=36))
+
+    @staticmethod
     def subEdges(sel=None):
-        if sel: return ls(filterExpand(sel, sm=37))
-        else: return ls(filterExpand(sm=37))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=37))
+        else:
+            return ls(filterExpand(sm=37))
+
+    @staticmethod
     def subFaces(sel=None):
-        if sel: return ls(filterExpand(sel, sm=38))
-        else: return ls(filterExpand(sm=38))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=38))
+        else:
+            return ls(filterExpand(sm=38))
+
+    @staticmethod
     def curveParams(sel=None):
-        if sel: return ls(filterExpand(sel, sm=39))
-        else: return ls(filterExpand(sm=39))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=39))
+        else:
+            return ls(filterExpand(sm=39))
+
+    @staticmethod
     def curveKnots(sel=None):
-        if sel: return ls(filterExpand(sel, sm=40))
-        else: return ls(filterExpand(sm=40))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=40))
+        else:
+            return ls(filterExpand(sm=40))
+
+    @staticmethod
     def surfParams(sel=None):
-        if sel: return ls(filterExpand(sel, sm=41))
-        else: return ls(filterExpand(sm=41))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=41))
+        else:
+            return ls(filterExpand(sm=41))
+
+    @staticmethod
     def surfKnots(sel=None):
-        if sel: return ls(filterExpand(sel, sm=42))
-        else: return ls(filterExpand(sm=42))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=42))
+        else:
+            return ls(filterExpand(sm=42))
+
+    @staticmethod
     def surfRange(sel=None):
-        if sel: return ls(filterExpand(sel, sm=43))
-        else: return ls(filterExpand(sm=43))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=43))
+        else:
+            return ls(filterExpand(sm=43))
+
+    @staticmethod
     def surfTrimEdges(sel=None):
-        if sel: return ls(filterExpand(sel, sm=44))
-        else: return ls(filterExpand(sm=44))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=44))
+        else:
+            return ls(filterExpand(sm=44))
+
+    @staticmethod
     def surfIsoparms(sel=None):
-        if sel: return ls(filterExpand(sel, sm=45))
-        else: return ls(filterExpand(sm=45))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=45))
+        else:
+            return ls(filterExpand(sm=45))
+
+    @staticmethod
     def latticePoints(sel=None):
-        if sel: return ls(filterExpand(sel, sm=46))
-        else: return ls(filterExpand(sm=46))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=46))
+        else:
+            return ls(filterExpand(sm=46))
+
+    @staticmethod
     def particles(sel=None):
-        if sel: return ls(filterExpand(sel, sm=47))
-        else: return ls(filterExpand(sm=47))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=47))
+        else:
+            return ls(filterExpand(sm=47))
+
+    @staticmethod
     def scalePivots(sel=None):
-        if sel: return ls(filterExpand(sel, sm=49))
-        else: return ls(filterExpand(sm=49))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=49))
+        else:
+            return ls(filterExpand(sm=49))
+
+    @staticmethod
     def rotatePivots(sel=None):
-        if sel: return ls(filterExpand(sel, sm=50))
-        else: return ls(filterExpand(sm=50))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=50))
+        else:
+            return ls(filterExpand(sm=50))
+
+    @staticmethod
     def SelectHandles(sel=None):
-        if sel: return ls(filterExpand(sel, sm=51))
-        else: return ls(filterExpand(sm=51))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=51))
+        else:
+            return ls(filterExpand(sm=51))
+
+    @staticmethod
     def SubdivisionSurface(sel=None):
-        if sel: return ls(filterExpand(sel, sm=68))
-        else: return ls(filterExpand(sm=68))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=68))
+        else:
+            return ls(filterExpand(sm=68))
+
+    @staticmethod
     def PolygonVertexFace(sel=None):
-        if sel: return ls(filterExpand(sel, sm=70))
-        else: return ls(filterExpand(sm=70))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=70))
+        else:
+            return ls(filterExpand(sm=70))
+
+    @staticmethod
     def surfacePatches(sel=None):
-        if sel: return ls(filterExpand(sel, sm=72))
-        else: return ls(filterExpand(sm=72))
-    @staticmethod        
+        if sel:
+            return ls(filterExpand(sel, sm=72))
+        else:
+            return ls(filterExpand(sm=72))
+
+    @staticmethod
     def SubdivisionMeshUVs(sel=None):
-        if sel: return ls(filterExpand(sel, sm=73))
-        else: return ls(filterExpand(sm=73))
+        if sel:
+            return ls(filterExpand(sel, sm=73))
+        else:
+            return ls(filterExpand(sm=73))
+
 
 def pivot2CompCenter():
     bb = dt.BoundingBox()
@@ -1086,8 +1302,10 @@ def pivot2CompCenter():
     pntsOther = ls(filterExpand(sm=(28, 30, 36, 37, 38, 39, 40, 41, 42, 46, 47, 73)))
 
     pnts = []
-    if polyVerts:pnts += polyVerts
-    if pntsOther:pnts += pntsOther
+    if polyVerts:
+        pnts += polyVerts
+    if pntsOther:
+        pnts += pntsOther
     # print len(pnts)
     objects = set()
     for pnt in pnts:
@@ -1099,10 +1317,11 @@ def pivot2CompCenter():
     xform(pnts[-1].node().getParent(), sp=pos, rp=pos, a=1, ws=1)
     select(objects)
 
-def inViewMes(icons, text):
-    path = 'C:\\Users\\yursiv\\Documents\\maya\\2015-x64\\modules\\ysvTools\\icons\\AdjustPivot.bmp'
 
-    mes = '''----------------
+def inViewMes(icons, text):
+    path = "C:\\Users\\yursiv\\Documents\\maya\\2015-x64\\modules\\ysvTools\\icons\\AdjustPivot.bmp"
+
+    mes = """----------------
     <body align="center">
     1 
     <img src="{0}">
@@ -1112,8 +1331,9 @@ def inViewMes(icons, text):
     <img src="{0}">
     </body>
 
-    '''.format(path)
-    print mes
+    """.format(
+        path
+    )
+    print(mes)
 
-
-    inViewMessage(amg=mes, fade=1, pos='midCenter') 
+    inViewMessage(amg=mes, fade=1, pos="midCenter")

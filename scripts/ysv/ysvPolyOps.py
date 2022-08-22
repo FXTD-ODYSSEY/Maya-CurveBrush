@@ -1,24 +1,38 @@
-import maya.cmds as mc
-from maya.mel import eval as mEval
+# Import future modules
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+# Import built-in modules
+from functools import reduce
 import math
 import operator
-# import sys
 
+# Import third-party modules
+# reload (mash_repro_utils)
+import mash_repro_aetemplate
+import mash_repro_utils
 import maya.OpenMaya as om
-# import maya.OpenMayaUI as omui
-from pymel.core import *
-import pymel.core.nodetypes as nt
-import pymel.core.datatypes as dt
+import maya.cmds as mc
 from maya.mel import eval as mEval
 
-import mash_repro_utils
-#reload (mash_repro_utils)
-import mash_repro_aetemplate
+# import maya.OpenMayaUI as omui
+from pymel.core import *
+import pymel.core.datatypes as dt
+import pymel.core.nodetypes as nt
 
-import ysvCurvesOps as yCrvs
-import ysvUtils  
-import ysvApiWrapers as ysvApi
-import ysvView
+from . import ysvApiWrapers as ysvApi
+from . import ysvCurvesOps as yCrvs
+from . import ysvUtils
+from . import ysvView
+
+
+# import sys
+
+
+
+
+
 
 # import PySide
 # from PySide.QtCore import *
@@ -28,43 +42,59 @@ import ysvView
 
 # import random as r
 # import colorsys
-#---------------------------------------------------------------------------------------------------------
-#---------------------------------------------Lists------------------------------------------------------------
-#---------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------
+# ---------------------------------------------Lists------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------
 def solidVertices(listVertices):
     ids = []
     node = None
     for v in listVertices:
-        if not type(v) == MeshVertex:continue
+        if not type(v) == MeshVertex:
+            continue
         ids += v.indices()
-        if not node:node = v.node()
+        if not node:
+            node = v.node()
     return node.vtx[ids]
+
+
 def solidEdges(listEdges):
     ids = []
     node = None
     for e in listEdges:
-        if not type(e) == MeshEdge:continue
+        if not type(e) == MeshEdge:
+            continue
         ids += e.indices()
-        if not node:node = e.node()
+        if not node:
+            node = e.node()
     return node.e[ids]
+
+
 def solidFaces(listFaces):
     ids = []
     node = None
     for f in listFaces:
-        if not type(f) == MeshFace:continue
+        if not type(f) == MeshFace:
+            continue
         ids += f.indices()
-        if not node:node = f.node()
+        if not node:
+            node = f.node()
     return node.f[ids]
 
+
 def getMatsAssignments(mesh, getIds=1, getShGroups=0):
-    if not mesh or not type(mesh) == nt.Mesh:return None, None
+    if not mesh or not type(mesh) == nt.Mesh:
+        return None, None
 
     shadersAr = om.MObjectArray()
     shIdsForFaces = om.MIntArray()
 
     mesh.__apimfn__().getConnectedShaders(0, shadersAr, shIdsForFaces)
 
-    shGroups = [nt.ShadingEngine(shadersAr[i]) for i in range(shadersAr.length()) if shadersAr[i].apiTypeStr() == 'kShadingEngine']
+    shGroups = [
+        nt.ShadingEngine(shadersAr[i])
+        for i in range(shadersAr.length())
+        if shadersAr[i].apiTypeStr() == "kShadingEngine"
+    ]
     ids = list(shIdsForFaces)
 
     if getIds and getShGroups:
@@ -74,21 +104,30 @@ def getMatsAssignments(mesh, getIds=1, getShGroups=0):
     elif not getIds and getShGroups:
         return shGroups
 
+
 def getEdgeBorder(components):
-    containedFaces = polyListComponentConversion(components, ff=1, fv=1, fe=1, fuv=1, fvf=1, tf=1, internal=1)
+    containedFaces = polyListComponentConversion(
+        components, ff=1, fv=1, fe=1, fuv=1, fvf=1, tf=1, internal=1
+    )
     if not containedFaces:
-        containedFaces = polyListComponentConversion(components, ff=1, fv=1, fe=1, fuv=1, fvf=1, tf=1)
+        containedFaces = polyListComponentConversion(
+            components, ff=1, fv=1, fe=1, fuv=1, fvf=1, tf=1
+        )
 
     if containedFaces:
         edges = polyListComponentConversion(containedFaces, ff=1, te=1, bo=1)
         return ls(edges)
-#---------------------------------------------------------------------------------------------------------
-#---------------------------------------------Geometry------------------------------------------------------------
-#---------------------------------------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------------------------------------
+# ---------------------------------------------Geometry------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------
+
 
 def edgeToPointDist(edge, point):
-    midPoint = (edge.getPoint(0, 'world') + edge.getPoint(1, 'world')) / 2
+    midPoint = (edge.getPoint(0, "world") + edge.getPoint(1, "world")) / 2
     return (midPoint - point).length()
+
 
 def closestEdge(point, edges):
     edges = solidEdges(edges)
@@ -105,8 +144,9 @@ def closestEdge(point, edges):
 
     return resultEdge
 
+
 def closestVertexFromFace(inPos, closesetPnt, mesh, faceId):
-    points = mesh.f[faceId].getPoints('world')
+    points = mesh.f[faceId].getPoints("world")
 
     for i, pos in enumerate(points):
         lng = (pos - closesetPnt).length()
@@ -120,10 +160,10 @@ def closestVertexFromFace(inPos, closesetPnt, mesh, faceId):
 
     return resultPos
 
-def closestVertex(inPos, mesh):
-    clPnt, fId = mesh.getClosestPoint(inPos, space='world')
-    points = mesh.f[fId].getPoints('world')
 
+def closestVertex(inPos, mesh):
+    clPnt, fId = mesh.getClosestPoint(inPos, space="world")
+    points = mesh.f[fId].getPoints("world")
 
     minDist = 1000000
     for pos in points:
@@ -134,15 +174,18 @@ def closestVertex(inPos, mesh):
 
     return resPoint
 
+
 def getSelectedVertsIds():
     selListHandle = om.MSelectionList()
-    om.MGlobal.getActiveSelectionList(selListHandle)  # give var 'list' as reference to get MSelectionList object
+    om.MGlobal.getActiveSelectionList(
+        selListHandle
+    )  # give var 'list' as reference to get MSelectionList object
 
     comp = om.MObject()
     dPath = om.MDagPath()
     for i in range(selListHandle.length()):
         selListHandle.getDagPath(i, dPath, comp)  #
-        if comp.apiTypeStr() == 'kMeshVertComponent':
+        if comp.apiTypeStr() == "kMeshVertComponent":
             yield (om.MItMeshVertex(dPath, comp), PyNode(dPath))
 
 
@@ -168,15 +211,18 @@ def closestVertexFast(inPos, meshFn, intersector):
 
     return resPoint
 
+
 def snapVertsToMeshVerts():
-    currentUnit(l='centimeter')
+    currentUnit(l="centimeter")
     makeIdentity(ls(sl=1) + ls(hl=1), a=1, r=1, s=1, t=1)
-    #makeIdentity(ls(hl=1), a=1, r=1, s=1, t=1)
+    # makeIdentity(ls(hl=1), a=1, r=1, s=1, t=1)
 
     mesh = ls(sl=1, dag=1, et=nt.Mesh)
 
-    if mesh:mesh = mesh[0]
-    if not mesh:return
+    if mesh:
+        mesh = mesh[0]
+    if not mesh:
+        return
 
     t = mc.timerX()
     meshFn = mesh.__apimfn__()
@@ -184,49 +230,57 @@ def snapVertsToMeshVerts():
     intersector = om.MMeshIntersector()
     meshMatr = mesh.__apimdagpath__().inclusiveMatrix()
     intersector.create(meshMO, meshMatr)
-    #intersector.create(meshMO)
+    # intersector.create(meshMO)
 
     for vIter, mesh in getSelectedVertsIds():
         # om.MItMeshVertex.position()
         vertsPos = []
         while not vIter.isDone():
-            pos = closestVertexFast(vIter.position(om.MSpace.kWorld), meshFn, intersector)
+            pos = closestVertexFast(
+                vIter.position(om.MSpace.kWorld), meshFn, intersector
+            )
             if pos:
                 vertsPos.append((vIter.index(), pos))
-            vIter.next()
+            next(vIter)
 
         for ind, pos in vertsPos:
-            move(mesh.vtx[ind], pos.x, pos.y, pos.z, a=1, ws=1) 
+            move(mesh.vtx[ind], pos.x, pos.y, pos.z, a=1, ws=1)
 
-    print 'time:', (mc.timerX() - t)
+    print("time:", (mc.timerX() - t))
+
 
 def snapVertsToMeshVerts_old():
     verts = [v for v in ls(sl=1) if type(v) == MeshVertex]
     mesh = ls(sl=1, dag=1, et=nt.Mesh)[0]
 
-    if not mesh or not verts:return
+    if not mesh or not verts:
+        return
 
     t = mc.timerX()
     verts = ls(verts, fl=1)
     for v in verts:
-        pos = closestVertex(v.getPosition('world'), mesh)
-        v.setPosition(pos, 'world')
+        pos = closestVertex(v.getPosition("world"), mesh)
+        v.setPosition(pos, "world")
 
-    print 'time:', (mc.timerX() - t)
+    print("time:", (mc.timerX() - t))
+
 
 def edge2PntDist(edge, point):
-    v0 = edge.getPoint(0, space='world')
-    v1 = edge.getPoint(1, space='world')
+    v0 = edge.getPoint(0, space="world")
+    v1 = edge.getPoint(1, space="world")
 
     edgeVec = v1 - v0
     pnt_Vert0_vec = v0 - point
 
-    pntToEdgeDist = (edgeVec.cross(pnt_Vert0_vec).length()) / edge.getLength(space='world')
+    pntToEdgeDist = (edgeVec.cross(pnt_Vert0_vec).length()) / edge.getLength(
+        space="world"
+    )
 
     return pntToEdgeDist
 
+
 def closestEdgeRatioDist(edge, point):
-    v0 = edge.getPoint(0, space='world')
+    v0 = edge.getPoint(0, space="world")
 
     pnt2Vert0Dist = (v0 - point).length()
     pntToEdgeDist = edge2PntDist(edge, point)
@@ -235,12 +289,14 @@ def closestEdgeRatioDist(edge, point):
 
     return distToV0
 
+
 def splitEdgeRatio(edge, fp1, fp2):
     distToV0 = closestEdgeRatioDist(edge, fp1) + closestEdgeRatioDist(edge, fp2)
     distToV0 = distToV0 / 2
 
-    ratio = distToV0 / edge.getLength(space='world')
+    ratio = distToV0 / edge.getLength(space="world")
     return ratio
+
 
 def commonEdge(f1, f2):
     edges1 = set(f1.getEdges())
@@ -249,11 +305,13 @@ def commonEdge(f1, f2):
     if len(commEdges):
         return list(commEdges)[0]
 
+
 def splitPolyWCurve():
     curves = ysvUtils.SEL.curves()
     meshes = ysvUtils.SEL.polygons()
 
-    if not curves or not meshes: return
+    if not curves or not meshes:
+        return
 
     crv = curves[0].getShape()
     mesh = meshes[0].getShape()
@@ -265,19 +323,19 @@ def splitPolyWCurve():
 
     fPnts = []
     while iterLng < crvLng:
-        param = crv.findParamFromLength(iterLng) 
-        pnt = crv.getPointAtParam(param, space='world')
+        param = crv.findParamFromLength(iterLng)
+        pnt = crv.getPointAtParam(param, space="world")
         fPnts.append(pnt)
         iterLng += step
 
-    param = crv.findParamFromLength(crvLng) 
-    pnt = crv.getPointAtParam(param, space='world')
+    param = crv.findParamFromLength(crvLng)
+    pnt = crv.getPointAtParam(param, space="world")
     fPnts.append(pnt)
 
     splitPnts = []
 
     for fPnt in fPnts:
-        fPnt, id = mesh.getClosestPoint(fPnt, space='world')
+        fPnt, id = mesh.getClosestPoint(fPnt, space="world")
         move(spaceLocator(), fPnt, a=1, ws=1)
         splitPnts.append((id, fPnt.x, fPnt.y, fPnt.z))
 
@@ -289,35 +347,41 @@ def splitPolyWCurve():
             f1 = mesh.f[currFPntId]
             edgeId = commonEdge(f0, f1)
 
-            print 'edgeId Getted: ', edgeId
+            print("edgeId Getted: ", edgeId)
             edge = mesh.e[edgeId]
-            print 'edge: ', edge
-            print 'getting ratio'
+            print("edge: ", edge)
+            print("getting ratio")
             ratio = splitEdgeRatio(edge, f0, f1)
-            print 'ratio: ', ratio
+            print("ratio: ", ratio)
 
-            print 'splitting edgeId {0} with ratio {1} at faces {2}{3}: '.format(edgeId, ratio, f0, f1)
+            print(
+                "splitting edgeId {0} with ratio {1} at faces {2}{3}: ".format(
+                    edgeId, ratio, f0, f1
+                )
+            )
         prevFPntId = currFPntId
 
 
-#---------------------------------------------------------------------------------------------------------
-#---------------------------------------------Loops------------------------------------------------------------
-#---------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------
+# ---------------------------------------------Loops------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------
 def targetWeld(v1, v2):
     # v1, v2 = ls(sl=1, fl=1)
     pos1 = pointPosition(v1, w=1)
     move(v2, pos1, a=1, ws=1)
-    polyMergeVertex([v1, v2], ch=0, d=0.001)   
+    polyMergeVertex([v1, v2], ch=0, d=0.001)
+
 
 def isEdgeLoop(edges):
     verts = ls(polyListComponentConversion(edges, tv=1), fl=1)
-    vertsRepeated = [v for edge in edges for v in ls(edge.connectedVertices(), fl=1)] 
+    vertsRepeated = [v for edge in edges for v in ls(edge.connectedVertices(), fl=1)]
 
     startV = endV = None
     for v in verts:
-        if vertsRepeated.count(v) == 1 and startV and endV: return 
+        if vertsRepeated.count(v) == 1 and startV and endV:
+            return
         if vertsRepeated.count(v) == 1:
-            if  not startV:
+            if not startV:
                 startV = v
             elif not endV:
                 endV = v
@@ -327,51 +391,59 @@ def isEdgeLoop(edges):
 
     return startV, endV
 
+
 def nextNeighborVertInLoop(vertex, loopEdgesSolid, restLoopVerts):
-    neibEdges = [e for e in loopEdgesSolid if e in vertex.connectedEdges()]    
-    neibVerts = [v for e in neibEdges for v in e.connectedVertices() if not v == vertex and v in restLoopVerts]
+    neibEdges = [e for e in loopEdgesSolid if e in vertex.connectedEdges()]
+    neibVerts = [
+        v
+        for e in neibEdges
+        for v in e.connectedVertices()
+        if not v == vertex and v in restLoopVerts
+    ]
 
     return neibVerts[0]
 
-#===============================================================================
+
+# ===============================================================================
 # def getOrderedLoopVerts_old(edges):
 #     verts = ls(polyListComponentConversion(edges, tv=1), fl=1)
-#     
+#
 #     try:
 #         select(edges)
 #         polyToCurve(f=0, dg=1)
 #     except:
 #         error('polyToCurveFailed in ysvPolyOps.getOrderedLoopVerts()')
-#     
+#
 #     crv = ls(sl=1, dag=1 , et=nt.NurbsCurve)[0]
-#     
+#
 #     vertParams = [(vert, crv.getParamAtPoint(vert.getPosition('world'), 'world')) for vert in verts]
 #     vertParams = sorted(vertParams, key=lambda pair:pair[1])
 #     verts = [pair[0] for pair in vertParams]
-#     
+#
 #     delete(crv.getParent())
 #     return verts
-#===============================================================================
+# ===============================================================================
+
 
 def getOrderedLoopVerts(edges, deleteCrv=True):
     # t = timerX()
     edges = ysvUtils.SEL.edges(edges)
     try:
         select(edges)
-        #print 'edges: ', edges
+        # print 'edges: ', edges
         polyToCurveRes = polyToCurve(f=0, dg=1)
-        #print 'poly to curve res: ', polyToCurveRes
+        # print 'poly to curve res: ', polyToCurveRes
     except:
-        error('polyToCurveFailed in ysvPolyOps.getOrderedLoopVerts()')
+        error("polyToCurveFailed in ysvPolyOps.getOrderedLoopVerts()")
         return
-        
+
     crvTr, polyEdgeToCurveNode = polyToCurveRes
 
     # print 'curve:', crv, node
-    ids = PyNode(polyEdgeToCurveNode).ics.get()    
+    ids = PyNode(polyEdgeToCurveNode).ics.get()
     for i, id in enumerate(ids):
-        id = id.split('[')[1]
-        id = id.split(']')[0]
+        id = id.split("[")[1]
+        id = id.split("]")[0]
         ids[i] = int(id)
 
     # print ids
@@ -381,7 +453,7 @@ def getOrderedLoopVerts(edges, deleteCrv=True):
         mesh = edges[0].node()
     # print edges
     # print 'edges mesh node: ', mesh
-    #print ids    
+    # print ids
     verts = [mesh.vtx[id] for id in ids]
 
     if deleteCrv:
@@ -396,15 +468,16 @@ def getOrderedLoopVerts(edges, deleteCrv=True):
 
 def flatPoly(outerEdges, holeEdges):
     verts = getOrderedLoopVerts(outerEdges)
-    points = [v.getPosition('world') for v in verts]
+    points = [v.getPosition("world") for v in verts]
 
     if not holeEdges:
         hPoints = []
     else:
         verts = getOrderedLoopVerts(holeEdges)
-        hPoints = [v.getPosition('world') for v in verts]
+        hPoints = [v.getPosition("world") for v in verts]
 
     polyCreateFacet(p=points + [()] + hPoints)
+
 
 def flatPolyFromCurve():
     results = []
@@ -413,7 +486,7 @@ def flatPolyFromCurve():
     for crv in crvs:
         curveFn = crv.__apimfn__()
         pnts = [pntData[0] for pntData in ysvApi.getCurvePntsFromCVs(curveFn)]
-        print 'pnts getted'
+        print("pnts getted")
         pnts = [dt.Point(pnt) for pnt in pnts]
         pnts.reverse()
         res = polyCreateFacet(p=pnts)
@@ -421,16 +494,20 @@ def flatPolyFromCurve():
         results.append(res)
     select(results)
 
+
 def circulizeLoop(edges=None):
     if not edges:
         edges = ls(sl=1)
-    if not edges:return
+    if not edges:
+        return
 
     verts = getOrderedLoopVerts(edges)
 
     midId = int((len(verts) - 1) / 2)
 
-    arcNode, crvSh = create3PointArc([verts[0].getPosition(), verts[midId].getPosition(), verts[-1].getPosition()])
+    arcNode, crvSh = create3PointArc(
+        [verts[0].getPosition(), verts[midId].getPosition(), verts[-1].getPosition()]
+    )
     crv = PyNode(crvSh).getParent()
 
     crv = rebuildCurve(crv, rpo=1, kr=0, kcp=1)[0]
@@ -442,7 +519,7 @@ def circulizeLoop(edges=None):
         move(v, pnt, a=1, ws=1)
 
     select(verts, crv, r=1)
-    eval('CreateWrap')
+    eval("CreateWrap")
     wrapNode = ls(listFuture(crv), et=nt.Wrap)[0]
     wrapNode.autoWeightThreshold.set(0)
     wrapNode.weightThreshold.set(0.1)
@@ -450,34 +527,41 @@ def circulizeLoop(edges=None):
     wrapNode.exclusiveBind.set(1)
 
     select(arcNode, r=1)
-    setToolTo('ShowManips')
+    setToolTo("ShowManips")
+
 
 def distributeLoop(edges=None, crv=None):
-    if not edges: edges = ls(polyListComponentConversion(te=1), fl=1)
-    if not crv: 
-        if ls(sl=1, dag=1, et=nt.NurbsCurve): crv = ls(sl=1, dag=1, et=nt.NurbsCurve)[0]
-    if not edges: return
+    if not edges:
+        edges = ls(polyListComponentConversion(te=1), fl=1)
+    if not crv:
+        if ls(sl=1, dag=1, et=nt.NurbsCurve):
+            crv = ls(sl=1, dag=1, et=nt.NurbsCurve)[0]
+    if not edges:
+        return
 
     curveFromEdges = False
 
     if not crv:
-        try: verts, crvTr, polyEdgeToCurveNode = getOrderedLoopVerts(edges, False)
-        except: 
-            print 'fail on sorting vert loop'
+        try:
+            verts, crvTr, polyEdgeToCurveNode = getOrderedLoopVerts(edges, False)
+        except:
+            print("fail on sorting vert loop")
             return
 
-        crv = ls(crvTr, dag=1, s=1, ni=1)[0] 
+        crv = ls(crvTr, dag=1, s=1, ni=1)[0]
         curveFromEdges = True
     else:
         verts = getOrderedLoopVerts(edges)
-        if not verts:return
+        if not verts:
+            return
 
-    if not crv:return
+    if not crv:
+        return
 
     if not curveFromEdges:
         crv = duplicate(crv)[0]
 
-    if len(verts) <= 100 :
+    if len(verts) <= 100:
         cvRebuildMult = 7
     elif len(verts) > 100 and len(verts) <= 300:
         cvRebuildMult = 5
@@ -486,13 +570,13 @@ def distributeLoop(edges=None, crv=None):
 
     crv = rebuildCurve(crv, rpo=1, kr=0, kcp=0, d=3, s=len(verts) * cvRebuildMult)[0]
 
-    optionVar(iv=('smoothHairCurvesSmoothFactor', 10 / cvRebuildMult))
-    mEval('performSmoothHairCurves 0')
-    optionVar(iv=('smoothHairCurvesSmoothFactor', 1))
+    optionVar(iv=("smoothHairCurvesSmoothFactor", 10 / cvRebuildMult))
+    mEval("performSmoothHairCurves 0")
+    optionVar(iv=("smoothHairCurvesSmoothFactor", 1))
 
     fCvPos = pointPosition(crv.cv[0], w=1)
-    pos0 = verts[0].getPosition('world')
-    pos1 = verts[-1].getPosition('world')
+    pos0 = verts[0].getPosition("world")
+    pos1 = verts[-1].getPosition("world")
     dist0 = (pos0 - fCvPos).length()
     dist1 = (pos1 - fCvPos).length()
     if dist0 > dist1:
@@ -506,26 +590,28 @@ def distributeLoop(edges=None, crv=None):
 
     delete(crv)
 
-def findClosestCurve(edges): 
+
+def findClosestCurve(edges):
     allLen = [e.getLength() for e in ls(edges, fl=1)]
     avEdgeLen = reduce(operator.add, allLen) / len(allLen)
 
     allVerts = ls(polyListComponentConversion(edges, tv=1))
     samples = 4
     st = len(allVerts) / samples
-    if st == 0:st = 1
-    verts = [allVerts[i] for i in range(0, len(allVerts), st) ]
+    if st == 0:
+        st = 1
+    verts = [allVerts[i] for i in range(0, len(allVerts), st)]
 
     vPnts = [pointPosition(v, w=1) for v in verts]
 
     distData = []
     curves = [c for c in ls(et=nt.NurbsCurve) if not c.io.get()]
     for crv in curves:
-        dist = [crv.distanceToPoint(pnt, 'world') for pnt in vPnts]
+        dist = [crv.distanceToPoint(pnt, "world") for pnt in vPnts]
         dist = reduce(operator.add, dist) / samples
         distData.append((dist, crv))
 
-    dist, crv = min(distData, key=lambda x:x[0])
+    dist, crv = min(distData, key=lambda x: x[0])
 
     if dist < avEdgeLen * 3:
         return crv
@@ -534,6 +620,8 @@ def findClosestCurve(edges):
 
     # for d in distData: print d
     # print 'curve:', crv
+
+
 def curveEvenPoints(crv, samples):
     # nt.NurbsCurve.getPoi
     points = []
@@ -543,34 +631,37 @@ def curveEvenPoints(crv, samples):
     for i in range(samples):
         currLen = step * i
         par = crv.findParamFromLength(currLen)
-        points.append(crv.getPointAtParam(par, 'world'))
+        points.append(crv.getPointAtParam(par, "world"))
 
     return points
 
+
 def distributeLoopWClosestCurve():
     edges = ysvUtils.SEL.edges()
-    if not edges: return
+    if not edges:
+        return
 
     verts = getOrderedLoopVerts(edges)
-    if not verts:return
+    if not verts:
+        return
 
     crv = findClosestCurve(edges)
     if not crv:
-        inViewMessage(msg='curve not finded', pos='midCenter', fade=1, fst=10)
-        warning('curve not finded')
+        inViewMessage(msg="curve not finded", pos="midCenter", fade=1, fst=10)
+        warning("curve not finded")
         return False
 
     cvFirstPos = pointPosition(crv.cv[0], w=1)
     cvLastPos = pointPosition(crv.cv[-1], w=1)
-    pos0 = verts[0].getPosition('world')
-    pos1 = verts[-1].getPosition('world')
+    pos0 = verts[0].getPosition("world")
+    pos1 = verts[-1].getPosition("world")
 
     if (pos0 - cvFirstPos).length() > (pos1 - cvFirstPos).length():
         verts.reverse()
 
     if not crv.minMaxValue.get() == (0.0, 1.0):
         yCrvs.rbldRange01(crv)
-    #--------------- checking placement of start and end verts relative to curve ends
+    # --------------- checking placement of start and end verts relative to curve ends
     stDist = min([(cvFirstPos - pos0).length(), (cvFirstPos - pos1).length()])
     endDist = min([(cvLastPos - pos0).length(), (cvLastPos - pos1).length()])
 
@@ -583,66 +674,76 @@ def distributeLoopWClosestCurve():
         partial = True
     else:
         partial = False
-    #--------------- checking placement of start and end verts relative to curve ends
+    # --------------- checking placement of start and end verts relative to curve ends
 
     if not partial:
-        pnts = curveEvenPoints(crv, len(verts)) 
+        pnts = curveEvenPoints(crv, len(verts))
         for i, v in enumerate(verts):
             move(v, pnts[i], a=1, ws=1)
 
-        #=======================================================================
+        # =======================================================================
         # paramStep = 1.0 / (len(verts) - 1)
         # for i, v in enumerate(verts):
         #     pnt = pointPosition(crv.u[paramStep * i], w=1)
         #     move(v, pnt, a=1, ws=1)
-        #=======================================================================
+        # =======================================================================
     else:
         distributeLoopPartial(edges, crv)
 
     return True
 
+
 def distributeLoopPartial(edges=None, crv=None):
-    ''' !!!!!!!!!!!!!!!! DO NOT REMOVE PRINTs OR IT WILL CRASH !!!!!!!!!!!!!!!!'''
-    ''' !!!!!!!!!!!!!!!! DO NOT REMOVE PRINTs OR IT WILL CRASH !!!!!!!!!!!!!!!!'''
-    ''' !!!!!!!!!!!!!!!! DO NOT REMOVE PRINTs OR IT WILL CRASH !!!!!!!!!!!!!!!!'''
-    ''' !!!!!!!!!!!!!!!! DO NOT REMOVE PRINTs OR IT WILL CRASH !!!!!!!!!!!!!!!!'''
+    """!!!!!!!!!!!!!!!! DO NOT REMOVE PRINTs OR IT WILL CRASH !!!!!!!!!!!!!!!!"""
+    """ !!!!!!!!!!!!!!!! DO NOT REMOVE PRINTs OR IT WILL CRASH !!!!!!!!!!!!!!!!"""
+    """ !!!!!!!!!!!!!!!! DO NOT REMOVE PRINTs OR IT WILL CRASH !!!!!!!!!!!!!!!!"""
+    """ !!!!!!!!!!!!!!!! DO NOT REMOVE PRINTs OR IT WILL CRASH !!!!!!!!!!!!!!!!"""
     fromTool = False
     if not edges:
         edges = ysvUtils.SEL.edges()
     if not crv:
         crv = [crv for crv in ls(sl=1, dag=1, et=nt.NurbsCurve) if not crv.io.get()]
-        if crv: crv = crv[0]
+        if crv:
+            crv = crv[0]
     if not crv:
         fromTool = True
         selectedCrvParams = ysvUtils.SEL.curveParams()
         crv = selectedCrvParams[0].node()
 
-    if not edges or not crv:return
+    if not edges or not crv:
+        return
 
     crvFn = crv.__apimfn__()
 
     verts = getOrderedLoopVerts(ls(edges))
-    pos0 = verts[0].getPosition('world')
-    pos1 = verts[-1].getPosition('world')
+    pos0 = verts[0].getPosition("world")
+    pos1 = verts[-1].getPosition("world")
 
     dPtr = om.MScriptUtil().asDoublePtr()
 
-    print ' ' 
-    crvFn.closestPoint(om.MPoint(pos0[0], pos0[1], pos0[2]), dPtr, 0.01, om.MSpace.kWorld)
-    print ' ' 
+    print(" ")
+    crvFn.closestPoint(
+        om.MPoint(pos0[0], pos0[1], pos0[2]), dPtr, 0.01, om.MSpace.kWorld
+    )
+    print(" ")
     param0 = om.MScriptUtil(dPtr).asFloat()
 
-    print ' ' 
-    crvFn.closestPoint(om.MPoint(pos1[0], pos1[1], pos1[2]), dPtr, 0.01, om.MSpace.kWorld)
-    print ' '
+    print(" ")
+    crvFn.closestPoint(
+        om.MPoint(pos1[0], pos1[1], pos1[2]), dPtr, 0.01, om.MSpace.kWorld
+    )
+    print(" ")
     param1 = om.MScriptUtil(dPtr).asFloat()
 
-    print 'params:', param0, param1
+    print("params:", param0, param1)
     select(crv.u[param0], crv.u[param1], r=1)
 
     if fromTool:
         if selectedCrvParams:
-            params = [float(param.split('.u[')[1].split(']')[0]) for param in selectedCrvParams]
+            params = [
+                float(param.split(".u[")[1].split("]")[0])
+                for param in selectedCrvParams
+            ]
             minPar = min(params)
             maxPar = max(params)
     else:
@@ -667,43 +768,49 @@ def distributeLoopPartial(edges=None, crv=None):
     selectType(pe=1)
     select(edges)
 
+
 def distributeLoopWCurveTool():
 
-    cmd = 'python(\"import ysvPolyOps\"); \n'
-    cmd += 'select -r $Selection1 $edges; \n'
-    cmd += 'python(\"ysvPolyOps.distributeLoopPartial()\");\n'
-    cmd += 'select -r $edges;';
+    cmd = 'python("import ysvPolyOps"); \n'
+    cmd += "select -r $Selection1 $edges; \n"
+    cmd += 'python("ysvPolyOps.distributeLoopPartial()");\n'
+    cmd += "select -r $edges;"
 
     ctx = scriptCtx(
-        title='Attach Curve',
+        title="Attach Curve",
         totalSelectionSets=1,
-        toolStart='string $edges[] = `ls -sl -fl`; hilite -r ; select -cl;',
+        toolStart="string $edges[] = `ls -sl -fl`; hilite -r ; select -cl;",
         finalCommandScript=cmd,
         cumulativeLists=True,
         expandSelectionList=True,
-        setNoSelectionPrompt='Select two curve points',
-        setSelectionPrompt='Select a second curve point',
-        setDoneSelectionPrompt='Never used because setAutoComplete is set',
+        setNoSelectionPrompt="Select two curve points",
+        setSelectionPrompt="Select a second curve point",
+        setDoneSelectionPrompt="Never used because setAutoComplete is set",
         setAutoToggleSelection=True,
         setSelectionCount=2,
         setAutoComplete=True,
-        curveParameterPoint=True)
+        curveParameterPoint=True,
+    )
 
     setToolTo(ctx)
 
-    inViewMessage(msg='Select 2 curve parameter points', fade=1, fst=500, pos='topCenter')
+    inViewMessage(
+        msg="Select 2 curve parameter points", fade=1, fst=500, pos="topCenter"
+    )
+
 
 def create3PointArc(pnts, res=10):
-    arcNode = mc.createNode('makeThreePointCircularArc')
-    mc.setAttr(arcNode + '.pt1', pnts[0][0], pnts[0][1], pnts[0][2])
-    mc.setAttr(arcNode + '.pt2', pnts[1][0], pnts[1][1], pnts[1][2])
-    mc.setAttr(arcNode + '.pt3', pnts[2][0], pnts[2][1], pnts[2][2])
-    mc.setAttr(arcNode + '.d', 3)
-    mc.setAttr(arcNode + '.s', res)
+    arcNode = mc.createNode("makeThreePointCircularArc")
+    mc.setAttr(arcNode + ".pt1", pnts[0][0], pnts[0][1], pnts[0][2])
+    mc.setAttr(arcNode + ".pt2", pnts[1][0], pnts[1][1], pnts[1][2])
+    mc.setAttr(arcNode + ".pt3", pnts[2][0], pnts[2][1], pnts[2][2])
+    mc.setAttr(arcNode + ".d", 3)
+    mc.setAttr(arcNode + ".s", res)
 
-    crv = mc.createNode('nurbsCurve')
-    mc.connectAttr(arcNode + '.oc', crv + '.cr')
-    return arcNode, crv 
+    crv = mc.createNode("nurbsCurve")
+    mc.connectAttr(arcNode + ".oc", crv + ".cr")
+    return arcNode, crv
+
 
 def getEdgesConnects(edges):
     mesh = edges[0].node()
@@ -731,15 +838,17 @@ def getEdgesConnects(edges):
         connNum = len(loopEdgeConns)
 
         if len(loopEdgeConns) > 2:
-            inViewMessage(msg='wrong edge loop selection', fade=1, pos='midCenter', fst=10)
-            return 
+            inViewMessage(
+                msg="wrong edge loop selection", fade=1, pos="midCenter", fst=10
+            )
+            return
 
         elif connNum == 1:
             onEndEdges.append(i)
 
         edgeConnects[str(i)] = tuple(loopEdgeConns)
 
-        eIter.next()
+        next(eIter)
 
     return onEndEdges, edgeConnects
 
@@ -755,13 +864,13 @@ def sortEdgesToLoops(edges):
         currLoop = [prevEdge]
 
         currEdge = edgeConnects[str(prevEdge)][0]
-        del(edgeConnects[str(prevEdge)])
+        del edgeConnects[str(prevEdge)]
 
         while len(edgeConnects[str(currEdge)]) > 1:
             currLoop.append(currEdge)
 
             e1, e2 = edgeConnects[str(currEdge)]
-            del(edgeConnects[str(currEdge)])
+            del edgeConnects[str(currEdge)]
 
             if prevEdge == e1:
                 nextEdge = e2
@@ -771,20 +880,21 @@ def sortEdgesToLoops(edges):
             prevEdge = currEdge
             currEdge = nextEdge
 
-        del(edgeConnects[str(currEdge)])
+        del edgeConnects[str(currEdge)]
         onEndEdges.remove(currEdge)
 
         currLoop.append(currEdge)
         loops.append(currLoop)
 
-    if not edgeConnects: return loops
+    if not edgeConnects:
+        return loops
 
     while edgeConnects:
-        first = int(edgeConnects.keys()[0])
+        first = int(list(edgeConnects.keys())[0])
 
-        if not edgeConnects.values()[0]:
-            k = edgeConnects.keys()[0]
-            del(edgeConnects[k])
+        if not list(edgeConnects.values())[0]:
+            k = list(edgeConnects.keys())[0]
+            del edgeConnects[k]
             continue
 
         currLoop = [first]
@@ -792,12 +902,12 @@ def sortEdgesToLoops(edges):
         prevEdge = first
 
         currEdge = edgeConnects[str(first)][0]
-        del(edgeConnects[str(first)])
+        del edgeConnects[str(first)]
         while True:
             currLoop.append(currEdge)
 
             e1, e2 = edgeConnects[str(currEdge)]
-            del(edgeConnects[str(currEdge)])
+            del edgeConnects[str(currEdge)]
 
             if prevEdge == e1:
                 nextEdge = e2
@@ -812,36 +922,41 @@ def sortEdgesToLoops(edges):
 
         loops.append(currLoop)
 
-
-    print 'time: ', timerX() - t
+    print("time: ", timerX() - t)
     return loops
+
 
 def distributeLoops(edges=None):
     t = timerX()
     if not edges:
         edges = ls(polyListComponentConversion(te=1))
         # edges = ls(edges, fl=1)
-    if not edges:return
+    if not edges:
+        return
     mesh = edges[0].node()
 
     for loopIds in sortEdgesToLoops(edges):
         loopEdges = mesh.e[loopIds]
         distributeLoop(loopEdges)
 
-    mes = 'distributing edge loops({0}edges) took: {1} sec'.format(len(edges), timerX() - t)
+    mes = "distributing edge loops({0}edges) took: {1} sec".format(
+        len(edges), timerX() - t
+    )
     headsUpMessage(mes)
-    #print mes
+    # print mes
 
     hilite(edges[0].node())
     selectMode(co=1)
     selectType(pe=1)
     select(edges)
 
+
 def alignInLine(edges=None):
     if not edges:
         edges = polyListComponentConversion(te=1)
         edges = ls(edges, fl=1)
-    if not edges:return
+    if not edges:
+        return
 
     verts = getOrderedLoopVerts(edges)
 
@@ -860,9 +975,25 @@ def alignInLine(edges=None):
 
         move(pos[0], pos[1], pos[2], verts[i], a=1, ws=1)
 
+
 def getHistory(mesh):
-    skipThisNodes = ['groupId', 'mesh', 'groupParts', 'transform', 'deformTwist', 'deformBend', 'deformSine', 'deformSquash', 'deformWave', 'deformFlare', 'nurbsCurve' ]
-    return [node for node in listHistory(mesh) if not str(nodeType(node)) in skipThisNodes]
+    skipThisNodes = [
+        "groupId",
+        "mesh",
+        "groupParts",
+        "transform",
+        "deformTwist",
+        "deformBend",
+        "deformSine",
+        "deformSquash",
+        "deformWave",
+        "deformFlare",
+        "nurbsCurve",
+    ]
+    return [
+        node for node in listHistory(mesh) if not str(nodeType(node)) in skipThisNodes
+    ]
+
 
 def bevel(edges=None):
     if not edges:
@@ -873,7 +1004,11 @@ def bevel(edges=None):
         allNodes = [node for node in getHistory(mesh)]
 
         bevelNodes = ls(allNodes, et=nt.PolyBevel2)
-        roundNodes = [node for node in listConnections(bevelNodes) if type(node) == nt.RoundConstantRadius]
+        roundNodes = [
+            node
+            for node in listConnections(bevelNodes)
+            if type(node) == nt.RoundConstantRadius
+        ]
 
         roundNode = None
         if roundNodes:
@@ -883,9 +1018,8 @@ def bevel(edges=None):
         if not roundNode:
             roundNode = createNode(nt.RoundConstantRadius)
         else:
-            while(roundNode.radius[i].connections()):
+            while roundNode.radius[i].connections():
                 i += 1
-
 
         select(edges[-1])
         crvSh = PyNode(polyToCurve(f=2, dg=1, ch=0)[0])
@@ -895,7 +1029,11 @@ def bevel(edges=None):
         perpEdge = list(set(ls(edges[-1].connectedEdges(), fl=1)) - set(edges))[0]
 
         select(edges)
-        bevelNode = PyNode(polyBevel(edges, o=perpEdge.getLength() / 2, oaf=0, af=0, sg=4, ws=1, ch=1)[0])
+        bevelNode = PyNode(
+            polyBevel(edges, o=perpEdge.getLength() / 2, oaf=0, af=0, sg=4, ws=1, ch=1)[
+                0
+            ]
+        )
         bevelNode.smoothingAngle.set(180)
 
         connectAttr(crvSh.worldSpace[0], roundNode.edge[i].inputCurveA[0], f=1)
@@ -905,13 +1043,14 @@ def bevel(edges=None):
         roundNode.radius[i].set(perpEdge.getLength() / 2)
 
         select([mesh.getParent(), roundNode])
-        setToolTo('ShowManips')
+        setToolTo("ShowManips")
+
 
 def findEdgesFromCurve(obj, crv):
     if obj.getShape().__apimdagpath__().hasFn(om.MFn.kMesh):
         meshDP = obj.getShape().__apimdagpath__()
     else:
-        print 'wrong input attr 1 in meshEdgesFromCurve()'
+        print("wrong input attr 1 in meshEdgesFromCurve()")
         return
 
     crvFn = crv.getShape().__apimfn__()
@@ -932,27 +1071,31 @@ def findEdgesFromCurve(obj, crv):
         if d0 < 0.1 * eLng and d1 < 0.1 * eLng:
             edgesIds.append(eIter.index())
 
-        eIter.next()
+        next(eIter)
 
     return obj.getShape().e[edgesIds]
 
-def loopCurve(edges):    
+
+def loopCurve(edges):
     select(edges)
     polyToCurve(dg=1, f=0)
     crv = ls(sl=1, dag=1, et=nt.NurbsCurve)
     if not crv:
-        headsUpMessage('wrong loop')
+        headsUpMessage("wrong loop")
         return
     crv = crv[0].getParent()
 
     return crv
 
+
 def bridgeEasy(edges=None, maxToDistr=500):
-    if not edges: edges = ysvUtils.SEL.edges()
-    if not edges: return
+    if not edges:
+        edges = ysvUtils.SEL.edges()
+    if not edges:
+        return
     loops = sortEdgesToLoops(edges)
     if len(loops) < 2:
-        headsUpMessage('selection is wrong')
+        headsUpMessage("selection is wrong")
         return
 
     needToDistribute = True
@@ -984,7 +1127,7 @@ def bridgeEasy(edges=None, maxToDistr=500):
         smallLoop = ls(findEdgesFromCurve(meshTr, crvSmall), fl=1)
         bigLoop = ls(findEdgesFromCurve(meshTr, crvBig), fl=1)
 
-        # crvSmallLoop = yCrvs.rbldSimple(crvSmall, s=(crvSmall.getShape().length() / len(smallLoop))) 
+        # crvSmallLoop = yCrvs.rbldSimple(crvSmall, s=(crvSmall.getShape().length() / len(smallLoop)))
         delete(crvSmall)
         delete(crvBig)
 
@@ -994,23 +1137,25 @@ def bridgeEasy(edges=None, maxToDistr=500):
         if len(smallLoops) < maxToDistr:
             distributeLoops(smallLoops)
             distributeLoops(smallLoops)
-        #=======================================================================
+        # =======================================================================
         # select(bigLoop)
         # polySelectSp(ring=1)
         # bigLoops = ls(sl=1)
         # distributeLoops(bigLoops)
         # distributeLoops(bigLoops)
-        #=======================================================================
+        # =======================================================================
 
     select(smallLoop, bigLoop)
-    #print 'loops selected'
+    # print 'loops selected'
     select(polyBridgeEdge())
-    setToolTo('ShowManips')
+    setToolTo("ShowManips")
 
     hilite(mesh)
 
+
 def polyToCrv(edges=None, step=3):
-    if not edges:edges = ls(sl=1)
+    if not edges:
+        edges = ls(sl=1)
     select(edges)
     crv = polyToCurve(f=2, dg=3)[0]
     # print [crv]
@@ -1018,23 +1163,27 @@ def polyToCrv(edges=None, step=3):
 
     length = crv.length()
     res = length / step
-    rebuildCurve(crv, ch=1, rpo=1, rt=0, end=1, kr=0, kcp=0, kep=1, kt=0, s=res, d=3, tol=0.01)
-    if crv.f.get() == 0:return crv
+    rebuildCurve(
+        crv, ch=1, rpo=1, rt=0, end=1, kr=0, kcp=0, kep=1, kt=0, s=res, d=3, tol=0.01
+    )
+    if crv.f.get() == 0:
+        return crv
 
     resCurve = yCrvs.crvDetachGentle(crv, res)
-    resCurve.getParent().rename('edgesToCurve')
-    return resCurve  
+    resCurve.getParent().rename("edgesToCurve")
+    return resCurve
 
 
 def fixNormals(sourceMesh, targetMesh):
     trgFace = targetMesh.f[0]
-    trgNorm = trgFace.getNormal('world')
+    trgNorm = trgFace.getNormal("world")
 
-    pos = trgFace.getPoint(0, 'world')
-    srcNorm, id = sourceMesh.getClosestNormal(pos, 'world')
+    pos = trgFace.getPoint(0, "world")
+    srcNorm, id = sourceMesh.getClosestNormal(pos, "world")
 
     if trgNorm.dot(srcNorm) < 0:
         polyNormal(targetMesh, nm=0, unm=0)
+
 
 def connectBorders(verts1, verts2):
     verts1 = ls(polyListComponentConversion(verts1, tv=1))
@@ -1046,17 +1195,16 @@ def connectBorders(verts1, verts2):
     targsStay = set()
 
     for v in verts1:
-        vPos = v.getPosition('world')
+        vPos = v.getPosition("world")
         minDist = 1000000
         for tv in verts2:
-            trgPos = tv.getPosition('world')
+            trgPos = tv.getPosition("world")
             lng = (trgPos - vPos).length()
 
             if lng < minDist:
                 minDist = lng
                 selTV = tv
                 Pos = trgPos
-
 
         targsStay.add(selTV.index())
         # v.setPosition(Pos, 'world')
@@ -1068,6 +1216,7 @@ def connectBorders(verts1, verts2):
     if targsRemove:
         return node.vtx[targsRemove]
 
+
 def bridge(verts, targetVerts):
 
     t = mc.timerX()
@@ -1075,28 +1224,30 @@ def bridge(verts, targetVerts):
     targVertsRemove = connectBorders(verts, targetVerts)
     if targVertsRemove:
         connectBorders(targVertsRemove, verts)
-    print 'bridge took{0} {1}'.format(t - mc.timerX(), 'seconds')
+    print("bridge took{0} {1}".format(t - mc.timerX(), "seconds"))
 
-def bridgeRapid(edges=None, selType='contig'):
+
+def bridgeRapid(edges=None, selType="contig"):
     if not edges:
         edges = ls(sl=1, fl=1)
-    if not edges:return
-    if not len(edges) == 2:return
+    if not edges:
+        return
+    if not len(edges) == 2:
+        return
 
     select(edges[0])
-    if selType == 'contig':
+    if selType == "contig":
         polySelectConstraint(type=0x8000, pp=4, m2a=20, m3a=60)
-    elif selType == 'loop':
-        mEval('SelectEdgeLoopSp')
+    elif selType == "loop":
+        mEval("SelectEdgeLoopSp")
     mc.ConvertSelectionToVertices()
     verts = ls(sl=1)
 
-
     select(edges[1])
-    if selType == 'contig':
+    if selType == "contig":
         polySelectConstraint(type=0x8000, pp=4, m2a=20, m3a=60)
-    elif selType == 'loop':
-        mEval('SelectEdgeLoopSp')
+    elif selType == "loop":
+        mEval("SelectEdgeLoopSp")
     mc.ConvertSelectionToVertices()
     targetVerts = ls(sl=1)
 
@@ -1105,28 +1256,28 @@ def bridgeRapid(edges=None, selType='contig'):
     targVertsRemove = connectBorders(verts, targetVerts)
     if targVertsRemove:
         connectBorders(targVertsRemove, verts)
-    print 'bridge took{0} {1}'.format(timer(e=1), 'seconds')
+    print("bridge took{0} {1}".format(timer(e=1), "seconds"))
 
 
+# ---------------------------------------------------------------------------------
+# --------------------------------Duplicatir---------------------------------
+# ---------------------------------------------------------------------------------
 
-
-#---------------------------------------------------------------------------------  
-#--------------------------------Duplicatir---------------------------------  
-#---------------------------------------------------------------------------------  
 
 def ExtractDuplicatirSource():
-    sel = mc.ls(sl=1, dag=1, et="mesh") 
-    if not sel:return
+    sel = mc.ls(sl=1, dag=1, et="mesh")
+    if not sel:
+        return
 
     objsSh = sel[0]
     obj = mc.listRelatives(objsSh, p=1)[0]
 
-
     nodes = mc.listHistory()
-    if not nodes: return
-    dupNode = ''
+    if not nodes:
+        return
+    dupNode = ""
     for n in nodes:
-        if mc.nodeType(n) == 'Duplicatir' or mc.nodeType(n) == 'Duplicatir2D':
+        if mc.nodeType(n) == "Duplicatir" or mc.nodeType(n) == "Duplicatir2D":
             dupNode = n
 
     if dupNode:
@@ -1138,16 +1289,16 @@ def ExtractDuplicatirSource():
         sourceObj = mc.rename(sourceObj, obj + "_duplicatirSource")
     mc.select(sourceObj, r=1)
 
+
 def reSourceGeoDuplicator():
     if not len(mc.ls(sl=1, o=1)) == 2:
-        print "select exactly 2 objects, one of them whithout Duplicatir!"
-        return;
+        print("select exactly 2 objects, one of them whithout Duplicatir!")
+        return
     o1, o2 = mc.ls(sl=1, o=1)
     h1 = mc.listHistory(o1)
     h2 = mc.listHistory(o2)
 
     source = geoDup = ""
-
 
     for node in h1:
         if mc.nodeType(node) == "Duplicatir" or mc.nodeType(node) == "Duplicatir2D":
@@ -1157,29 +1308,34 @@ def reSourceGeoDuplicator():
     for node in h2:
         if mc.nodeType(node) == "Duplicatir" or mc.nodeType(node) == "Duplicatir2D":
             if geoDup:
-                print "something wrong"
-                return;
+                print("something wrong")
+                return
             source = o1
-            geoDup = node    
-
+            geoDup = node
 
     mc.FreezeTransformations(source)
     bb = mc.xform(source, q=1, bb=1, ws=1)
-    mc.xform(source, sp=((bb[0] + bb[3]) / 2, bb[1], bb[2]), rp=(((bb[0] + bb[3]) / 2, bb[1], bb[2])))
+    mc.xform(
+        source,
+        sp=((bb[0] + bb[3]) / 2, bb[1], bb[2]),
+        rp=(((bb[0] + bb[3]) / 2, bb[1], bb[2])),
+    )
     mc.move(0, 0, 0, source, rpr=1)
     mc.FreezeTransformations(source)
 
     shape = mc.listRelatives(source, c=1)[0]
     mc.connectAttr(shape + ".outMesh", geoDup + ".inMesh", f=1)
-        # mc.disconnectAttr(shape+".outMesh", geoDup + ".inMesh")
+    # mc.disconnectAttr(shape+".outMesh", geoDup + ".inMesh")
+
 
 def ConnectGeoDuplicator(is2D=0):
-    nodeType = 'Duplicatir'
+    nodeType = "Duplicatir"
     if is2D:
-        nodeType = 'Duplicatir2D'
+        nodeType = "Duplicatir2D"
 
-    sel = mc.ls(sl=1, dag=1, et="mesh") 
-    if not sel:return
+    sel = mc.ls(sl=1, dag=1, et="mesh")
+    if not sel:
+        return
 
     objsSh = sel
     objs = mc.listRelatives(objsSh, p=1)
@@ -1187,7 +1343,11 @@ def ConnectGeoDuplicator(is2D=0):
     for o in objs:
         mc.FreezeTransformations(o)
         bb = mc.xform(o, q=1, bb=1, ws=1)
-        mc.xform(o, sp=((bb[0] + bb[3]) / 2, bb[1], bb[2]), rp=(((bb[0] + bb[3]) / 2, bb[1], bb[2])))
+        mc.xform(
+            o,
+            sp=((bb[0] + bb[3]) / 2, bb[1], bb[2]),
+            rp=(((bb[0] + bb[3]) / 2, bb[1], bb[2])),
+        )
         mc.move(0, 0, 0, o, rpr=1)
         mc.FreezeTransformations(o)
 
@@ -1198,9 +1358,9 @@ def ConnectGeoDuplicator(is2D=0):
 
         mc.select(o, r=1)
 
-
-        shapes = mc.listRelatives(o, c=1) 
-        if not shapes: return 
+        shapes = mc.listRelatives(o, c=1)
+        if not shapes:
+            return
         shape = shapes[0]
         connections = mc.listConnections(shape + ".inMesh", s=1, p=1)
 
@@ -1218,16 +1378,17 @@ def ConnectGeoDuplicator(is2D=0):
         mc.select(o, r=1)
         mc.polyMergeVertex(d=0.001, am=1, ch=1)
 
-    mc.select(sel, r=1)        
+    mc.select(sel, r=1)
+
 
 def setDuplicatirLength(crv=None, mesh=None):
-    crvSh = ls(sl=1, dag=1, et=nt.NurbsCurve)[0] 
+    crvSh = ls(sl=1, dag=1, et=nt.NurbsCurve)[0]
     crv = crvSh.getParent()
 
     mesh = ls(sl=1, dag=1, et=nt.Mesh)[0]
-    meshTr = mesh.getParent() 
+    meshTr = mesh.getParent()
 
-    dupNode = [node for node in ls(listHistory(mesh), et='Duplicatir')]
+    dupNode = [node for node in ls(listHistory(mesh), et="Duplicatir")]
     if dupNode:
         dupNode = dupNode[0]
         crvLen = crvSh.length()
@@ -1238,53 +1399,55 @@ def setDuplicatirLength(crv=None, mesh=None):
         setAttr(dupNode + ".count", copies)
         meshTr.sz.set(crvLen / dupNode.BBSizeOutZ.get())
 
-#--------------------------------------------------------------
-#-----------------------------Other----------------------------------
-#---------------------------------------------------------------
+
+# --------------------------------------------------------------
+# -----------------------------Other----------------------------------
+# ---------------------------------------------------------------
 def projectsCVsToMesh(sel, mesh=None):
     startSelection = ls(sl=1)
     curves = ls(sel, dag=1, et=nt.NurbsCurve)
     cvs = [s for s in ls(sel, fl=1) if type(s) == NurbsCurveCV]
-    
-    if len(cvs)>1 or curves:
+
+    if len(cvs) > 1 or curves:
         softSelect(e=1, sse=0)
 
     cvCurves = set()
     for cv in ls(cvs, fl=1):
-        cvCurves.add(cv.node()) 
+        cvCurves.add(cv.node())
     allCurves = curves + list(cvCurves)
 
     if not mesh:
-        for c in allCurves:c.updateCurve()
-        
+        for c in allCurves:
+            c.updateCurve()
+
         initInViewObjs = ysvView.getInViewObjs()
         meshes = ls(initInViewObjs, dag=1, et=nt.Mesh, ni=1)
         currCam = ysvView.getCurrCam()
-        
+
         minDist = currCam.getFarClipPlane()
         for m in meshes:
-            camPos = currCam.getTranslation(space='world')
-            meshPos = m.getParent().getBoundingBox(space = 'world').center()
-            dist = (camPos-meshPos).length()
-            if dist<minDist:
+            camPos = currCam.getTranslation(space="world")
+            meshPos = m.getParent().getBoundingBox(space="world").center()
+            dist = (camPos - meshPos).length()
+            if dist < minDist:
                 minDist = dist
                 mesh = m
-            
-        if mesh: 
-            print 'fined closest mesh:', mesh
-        else: 
-            print 'mesh not finded'
+
+        if mesh:
+            print("fined closest mesh:", mesh)
+        else:
+            print("mesh not finded")
             return
-        
+
     for crv in curves:
         cvs += [crv.cv]
 
-    #makeIdentity(mesh.getParent(), a=1, t=1, r=1, s=1)
+    # makeIdentity(mesh.getParent(), a=1, t=1, r=1, s=1)
     # makeIdentity(curves, a=1, t=1, r=1, s=1)
 
     if mesh.displaySmoothMesh.get() == 2:
-        meshFn = mesh.__apimfn__() 
-        plug = meshFn.findPlug('outSmoothMesh')
+        meshFn = mesh.__apimfn__()
+        plug = meshFn.findPlug("outSmoothMesh")
         plugMO = plug.asMObject()
 
         intersector = om.MMeshIntersector()
@@ -1294,30 +1457,38 @@ def projectsCVsToMesh(sel, mesh=None):
         for cv in ls(cvs, fl=1):
             pnt = om.MPoint()
             # newPos, id = mesh.getClosestPoint(cv.getPosition(space='world'), space='world')
-            pos = cv.getPosition(space='world')
-            clsPnt = ysvApi.closestMeshPoint(om.MPoint(pos.x, pos.y, pos.z), intersector)[0]
+            pos = cv.getPosition(space="world")
+            clsPnt = ysvApi.closestMeshPoint(
+                om.MPoint(pos.x, pos.y, pos.z), intersector
+            )[0]
 
             select(cv)
             move(clsPnt.x, clsPnt.y, clsPnt.z, a=1, ws=1)
             # cv.setPosition(newPos, space='world')
     else:
         for cv in ls(cvs, fl=1):
-            newPos, id = mesh.getClosestPoint(cv.getPosition(space='world'), space='world')
+            newPos, id = mesh.getClosestPoint(
+                cv.getPosition(space="world"), space="world"
+            )
 
             select(cv)
             move(newPos, a=1, ws=1)
             # cv.setPosition(newPos, space='world')
 
-    for c in allCurves:c.updateCurve()
+    for c in allCurves:
+        c.updateCurve()
     select(startSelection)
+
 
 def projectCurves():
     mesh = ls(sl=1, dag=1, et=nt.Mesh)
-    if not mesh:return
+    if not mesh:
+        return
     mesh = mesh[0]
 
     curves = ls(sl=1, dag=1, et=nt.NurbsCurve)
-    if not curves:return
+    if not curves:
+        return
 
     prjCurvesParents = []
     prjCurves = []
@@ -1332,12 +1503,11 @@ def projectCurves():
     parent(prjCurves, w=1)
     delete(prjCurvesParents)
     select(prjCurves)
-    
+
 
 def flattenMeshesFromUVs():
     meshes = set(ls(sl=1, dag=1, et=nt.Mesh)) - set(ls(sl=1, dag=1, et=nt.Mesh, io=1))
     meshes = list(meshes)
-
 
     for mesh in meshes:
         meshTr = mesh.getParent()
@@ -1362,28 +1532,101 @@ def flattenMeshesFromUVs():
         mc.CenterPivot()
         area1 = newMesh.area()
 
-
         r = area0 / area1
         r = math.sqrt(r)
-        print r
+        print(r)
         scale(newMeshTr, r, r, r)
         select(newMeshTr, meshTr)
-        align(atl=1, x='mid', y='min', z='mid')
-        eval('blendShapeDeleteTarget \"blendShape -origin world\"')
+        align(atl=1, x="mid", y="min", z="mid")
+        eval('blendShapeDeleteTarget "blendShape -origin world"')
         blSh = ls(listHistory(), et=nt.BlendShape)[0]
         select(blSh, add=1)
 
-        setAttr(blSh.name() + "." + blendName, 1) 
+        setAttr(blSh.name() + "." + blendName, 1)
+
 
 def smtMesh(mesh):
-    divLevel = mesh.smoothLevel.get() 
+    divLevel = mesh.smoothLevel.get()
     if divLevel > 0:
         displaySmoothness(mesh, po=1)
         if divLevel > 4:
-            polySmooth(mesh, mth=0, sdt=2, ovb=2, ofb=3, ofc=0, ost=1, ocr=0, dv=4, bnr=1, c=1, kb=1, ksb=1, khe=0, kt=1, kmb=1, suv=1, peh=0, sl=1, dpe=1, ps=0.1, ro=1, ch=1)
-            polySmooth(mesh, mth=0, sdt=2, ovb=2, ofb=3, ofc=0, ost=1, ocr=0, dv=divLevel-4, bnr=1, c=1, kb=1, ksb=1, khe=0, kt=1, kmb=1, suv=1, peh=0, sl=1, dpe=1, ps=0.1, ro=1, ch=1)
+            polySmooth(
+                mesh,
+                mth=0,
+                sdt=2,
+                ovb=2,
+                ofb=3,
+                ofc=0,
+                ost=1,
+                ocr=0,
+                dv=4,
+                bnr=1,
+                c=1,
+                kb=1,
+                ksb=1,
+                khe=0,
+                kt=1,
+                kmb=1,
+                suv=1,
+                peh=0,
+                sl=1,
+                dpe=1,
+                ps=0.1,
+                ro=1,
+                ch=1,
+            )
+            polySmooth(
+                mesh,
+                mth=0,
+                sdt=2,
+                ovb=2,
+                ofb=3,
+                ofc=0,
+                ost=1,
+                ocr=0,
+                dv=divLevel - 4,
+                bnr=1,
+                c=1,
+                kb=1,
+                ksb=1,
+                khe=0,
+                kt=1,
+                kmb=1,
+                suv=1,
+                peh=0,
+                sl=1,
+                dpe=1,
+                ps=0.1,
+                ro=1,
+                ch=1,
+            )
         else:
-            polySmooth(mesh, mth=0, sdt=2, ovb=2, ofb=3, ofc=0, ost=1, ocr=0, dv=divLevel, bnr=1, c=1, kb=1, ksb=1, khe=0, kt=1, kmb=1, suv=1, peh=0, sl=1, dpe=1, ps=0.1, ro=1, ch=1)
+            polySmooth(
+                mesh,
+                mth=0,
+                sdt=2,
+                ovb=2,
+                ofb=3,
+                ofc=0,
+                ost=1,
+                ocr=0,
+                dv=divLevel,
+                bnr=1,
+                c=1,
+                kb=1,
+                ksb=1,
+                khe=0,
+                kt=1,
+                kmb=1,
+                suv=1,
+                peh=0,
+                sl=1,
+                dpe=1,
+                ps=0.1,
+                ro=1,
+                ch=1,
+            )
+
 
 def multiSoftModFaces():
     nodes = []
@@ -1391,12 +1634,12 @@ def multiSoftModFaces():
     faces = ysvUtils.SEL.faces()
     edges = ysvUtils.SEL.edges()
 
-    if faces:    
+    if faces:
         mesh = faces[0].node()
 
         for f in faces:
 
-            cntr = sum(f.getPoints('world')) / f.numVertices()
+            cntr = sum(f.getPoints("world")) / f.numVertices()
             node, softModTr = softMod(f, fm=0, fr=35.17, fom=1, fc=cntr)
 
             nodes.append(softModTr)
@@ -1419,8 +1662,8 @@ def multiSoftModFaces():
             # parent(softModTr, dupFaceMesh)
 
             mc.SelectTool()
-            print 'softMod tr:', softModTr
-            print 'dupMesh tr:', dupMeshTr
+            print("softMod tr:", softModTr)
+            print("dupMesh tr:", dupMeshTr)
             select(dupMeshTr, softModTr, r=1)
             parentConstraint(mo=1, w=1)
             scaleConstraint(mo=1, w=1)
@@ -1435,19 +1678,22 @@ def multiSoftModFaces():
         nodes.append(softModTr)
 
     select(nodes)
-    setToolTo('ShowManips')
+    setToolTo("ShowManips")
+
 
 def remeshOptionsUI():
     pass
+
 
 def remesh(res=20):
     t = timerX()
 
     srcMesh = ls(sl=1, dag=1, et=nt.Mesh, ni=1)[0]
 
-
-    try: mc.particleFill(rs=res, mxx=1, mxy=1, mxz=1, mnx=0, mny=0, mnz=0, pd=2)
-    except: pass
+    try:
+        mc.particleFill(rs=res, mxx=1, mxy=1, mxz=1, mnx=0, mny=0, mnz=0, pd=2)
+    except:
+        pass
 
     particleSh = ls(sl=1, dag=1, s=1)[0]
     solverNode = particleSh.startFrame.listConnections()[0]
@@ -1471,14 +1717,38 @@ def remesh(res=20):
 
     transferAttributes(srcMesh, trgMesh, pos=1, nml=0, uvs=0, col=0, spa=0, sm=0)
 
-    smthNode = polySmooth(trgMesh, mth=0, sdt=0, ovb=1, ofb=3, ofc=0, ost=1, ocr=0, dv=2, bnr=1, c=1, kb=1, ksb=1, khe=0, kt=1, kmb=1, suv=1, peh=0, sl=1, dpe=1, ps=0.1, ro=1, ch=1)
+    smthNode = polySmooth(
+        trgMesh,
+        mth=0,
+        sdt=0,
+        ovb=1,
+        ofb=3,
+        ofc=0,
+        ost=1,
+        ocr=0,
+        dv=2,
+        bnr=1,
+        c=1,
+        kb=1,
+        ksb=1,
+        khe=0,
+        kt=1,
+        kmb=1,
+        suv=1,
+        peh=0,
+        sl=1,
+        dpe=1,
+        ps=0.1,
+        ro=1,
+        ch=1,
+    )
 
     transferAttributes(srcMesh, trgMesh, pos=1, nml=0, uvs=0, col=0, spa=0, sm=0)
 
     try:
-        remeshHistory_gr = PyNode('remeshHistory_gr')
+        remeshHistory_gr = PyNode("remeshHistory_gr")
     except:
-        remeshHistory_gr = createNode(nt.Transform, name='remeshHistory_gr')
+        remeshHistory_gr = createNode(nt.Transform, name="remeshHistory_gr")
 
     parent(srcMesh.getParent(), remeshHistory_gr)
     parent(particleSh.getParent(), remeshHistory_gr)
@@ -1486,46 +1756,49 @@ def remesh(res=20):
     solverNode.hide()
     select(trgMesh.getParent())
 
-    #===========================================================================
+    # ===========================================================================
     # srcMeshTr = srcMesh.getParent()
     # particleTr = particleSh.getParent()
-    # 
+    #
     # particleSh.intermediateObject.set(1)
     # srcMesh.intermediateObject.set(1)
-    # 
+    #
     # parent(particleSh, trgMesh.getParent(), r=1, s=1)
     # parent(srcMesh, trgMesh.getParent(), r=1, s=1)
-    # 
+    #
     # delete(srcMeshTr, particleTr)
-    #===========================================================================
+    # ===========================================================================
     # print 'source: ', srcMesh
     # print 'target: ', trgMesh
     select(smthNode)
-    setToolTo('ShowManips')
-    print 'time: ', timerX() - t
+    setToolTo("ShowManips")
+    print("time: ", timerX() - t)
+
 
 def cutCurveCtx():
-    #===========================================================================
+    # ===========================================================================
     # nt.Camera.getCenterOfInterestPoint(space='world')
     # nt.Camera.getWorldCenterOfInterest()
-    # 
+    #
     # nt.Camera.getEyePoint(space='world')
     # nt.Camera.viewDirection(space='world')
-    #===========================================================================
+    # ===========================================================================
     obj = ls(sl=1, o=1)[0]
 
     currCam = PyNode(modelPanel(getPanel(wf=1), q=1, cam=1))
     camMatr = currCam.getMatrix(ws=1)
 
     objMatr = obj.getMatrix(ws=1)
-    #viewDir = currCam
+    # viewDir = currCam
 
-#--------------------               MY NODES         
+
+# --------------------               MY NODES
+
 
 def polyFillet(withCurves=False):
     # mEval('handleScriptEditorAction clearHistory')
-    if not pluginInfo('polyFillet.py', q=1, l=1):
-        loadPlugin('polyFillet.py')
+    if not pluginInfo("polyFillet.py", q=1, l=1):
+        loadPlugin("polyFillet.py")
 
     meshes = ls(sl=1, dag=1, et=nt.Mesh)
     crvs = ls(sl=1, dag=1, et=nt.NurbsCurve)
@@ -1533,20 +1806,21 @@ def polyFillet(withCurves=False):
     if not meshes:
         meshes = ls(lv=1, et=nt.Mesh)
     if not meshes or not crvs:
-        warning('select mesh(with proper mats) and curve(s)')
+        warning("select mesh(with proper mats) and curve(s)")
         return
 
     mesh = meshes[0]
 
-    try:node = createNode('polyFillet')
-    except:error('cannot create node')    
+    try:
+        node = createNode("polyFillet")
+    except:
+        error("cannot create node")
 
     meshFn = mesh.__apimfn__()
     shadersAr = om.MObjectArray()
     matIds = om.MIntArray()
     meshFn.getConnectedShaders(0, shadersAr, matIds)
-    node.matIds.set(list(matIds), type='Int32Array')    
-
+    node.matIds.set(list(matIds), type="Int32Array")
 
     for i, crv in enumerate(crvs):
         crv.worldSpace[0].connect(node.edges[i].inCurve, f=1)
@@ -1567,17 +1841,16 @@ def polyFillet(withCurves=False):
     node.cornerMesh.connect(genCornMesh.inMesh, f=1)
     polyMergeVertex(genCornMesh, d=0.01, am=1, ch=1)
     select(genCornMesh)
-    hyperShade(assign='lambert1')
+    hyperShade(assign="lambert1")
 
     select(genCornMesh, node)
-    setToolTo('ShowManips')
-
+    setToolTo("ShowManips")
 
 
 def polyLoft():
     curves = ls(sl=1, dag=1, et=nt.NurbsCurve, ni=1)
     meshes = ls(sl=1, dag=1, et=nt.Mesh, ni=1)
-    
+
     isFromEdges = False
     if not curves:
         polyEdges = ysvUtils.SEL.edges()
@@ -1585,13 +1858,13 @@ def polyLoft():
         loops = sortEdgesToLoops(polyEdges)
         for loop in loops[:2]:
             select(polyEdges[0].node().e[loop])
-        
+
             polyToCurve(f=0, dg=3)
             crv = ls(sl=1, dag=1, et=nt.NurbsCurve)
             if crv:
                 crv = crv[0]
                 curves.append(crv.getParent())
-                
+
                 crv.dispCV.set(1)
                 center = pointPosition(crv.cv[0], w=1)
                 xform(crv.getParent(), rp=center, sp=center, ws=1, a=1)
@@ -1599,21 +1872,24 @@ def polyLoft():
     if not meshes:
         meshes = ls(lv=1)
 
-    if len(curves)<2: return
-    
-    print 'meshes:', meshes
-    print 'curves:', curves
+    if len(curves) < 2:
+        return
 
-    lngs = [c.length() for c in curves] 
+    print("meshes:", meshes)
+    print("curves:", curves)
+
+    lngs = [c.length() for c in curves]
     avLng = reduce(operator.add, lngs) / len(lngs)
 
     stepVal = avLng / 8
 
-    if not pluginInfo('polyLoft.py', q=1, l=1):
-        loadPlugin('polyLoft.py', qt=1)
+    if not pluginInfo("polyLoft.py", q=1, l=1):
+        loadPlugin("polyLoft.py", qt=1)
 
-    try:node = createNode('polyLoft')
-    except:error('cannot create node polyLoft')
+    try:
+        node = createNode("polyLoft")
+    except:
+        error("cannot create node polyLoft")
 
     node.step.set(stepVal)
     node.divisionStep.set(stepVal)
@@ -1630,178 +1906,205 @@ def polyLoft():
         else:
             inMesh.outMesh.connect(node.inMesh, f=1)
 
-
     mesh = createNode(nt.Mesh)
     select(mesh)
-    hyperShade(assign='lambert1')
+    hyperShade(assign="lambert1")
 
     node.outMesh.connect(mesh.inMesh, f=1)
     node.dv.lock(1)
 
     select(mesh, node)
-    setToolTo('ShowManips')
+    setToolTo("ShowManips")
+
 
 def curvedCopies(deleteStrip=True):
-    if not pluginInfo('CurvedCopies.py', q=1, l=1):
-        try: loadPlugin('CurvedCopies.py')
+    if not pluginInfo("CurvedCopies.py", q=1, l=1):
+        try:
+            loadPlugin("CurvedCopies.py")
         except:
-            inViewMessage(msg='Fail on plugin load' , fade=1, fst=500, pos='midCenter')
+            inViewMessage(msg="Fail on plugin load", fade=1, fst=500, pos="midCenter")
             return
 
     liveMesh = ls(lv=1, dag=1, et=nt.Mesh, ni=1)
     if not liveMesh:
-        inViewMessage(msg='No live mesh, make one' , fade=1, fst=500, pos='midCenter')
+        inViewMessage(msg="No live mesh, make one", fade=1, fst=500, pos="midCenter")
         return
 
     meshes = ls(sl=1, dag=1, et=nt.Mesh, ni=1)
-    if len(meshes) >= 4: srcDup, srcDupS, srcDupE, srcDupMid = meshes[:4]
-    elif len(meshes) == 3: srcDup, srcDupS, srcDupE = meshes
-    elif len(meshes) == 2: srcDup, srcDupS = meshes
-    elif len(meshes) == 1: srcDup = meshes[0]
-    elif len(meshes) == 0: 
-        inViewMessage(msg='Select 1-4 meshes and curve' , fade=1, fst=500, pos='midCenter')
+    if len(meshes) >= 4:
+        srcDup, srcDupS, srcDupE, srcDupMid = meshes[:4]
+    elif len(meshes) == 3:
+        srcDup, srcDupS, srcDupE = meshes
+    elif len(meshes) == 2:
+        srcDup, srcDupS = meshes
+    elif len(meshes) == 1:
+        srcDup = meshes[0]
+    elif len(meshes) == 0:
+        inViewMessage(
+            msg="Select 1-4 meshes and curve", fade=1, fst=500, pos="midCenter"
+        )
         return
 
     crvs = ls(sl=1, dag=1, et=nt.NurbsCurve, ni=1)
     if not crvs:
-        inViewMessage(msg='Select 1-4 meshes and one curve' , fade=1, fst=500, pos='midCenter')
+        inViewMessage(
+            msg="Select 1-4 meshes and one curve", fade=1, fst=500, pos="midCenter"
+        )
         return
-    
+
     objs = [liveMesh[0].getParent()]
-    objs+=[crv.getParent() for crv in crvs]
-    objs+=[mesh.getParent() for mesh in meshes]
-    makeIdentity(crvs+[liveMesh[0].getParent()], a=1, r=1, s=1, t=1)
-    
+    objs += [crv.getParent() for crv in crvs]
+    objs += [mesh.getParent() for mesh in meshes]
+    makeIdentity(crvs + [liveMesh[0].getParent()], a=1, r=1, s=1, t=1)
+
     for crv in crvs:
-        try: node = createNode('curvedCopies')
-        except: node = None
-    
-        if not node: 
-            inViewMessage(msg = 'CurvedCopies node is not created', fade=1, fst=500)
+        try:
+            node = createNode("curvedCopies")
+        except:
+            node = None
+
+        if not node:
+            inViewMessage(msg="CurvedCopies node is not created", fade=1, fst=500)
             return
-        
-        if not objExists('stripMeshes'):
-            stripGroup = createNode(nt.Transform, n='stripMeshes')
+
+        if not objExists("stripMeshes"):
+            stripGroup = createNode(nt.Transform, n="stripMeshes")
         else:
-            stripGroup = PyNode('stripMeshes')
-    
+            stripGroup = PyNode("stripMeshes")
+
         crv.worldSpace[0].connect(node.inCurve, f=1)
         if liveMesh:
             liveMesh[0].outMesh.connect(node.inMesh, f=1)
-    
+
         outDupMesh = createNode(nt.Mesh)
-        outDupMesh.getParent().rename('outDupMesh')
-        hyperShade(assign='lambert1')
+        outDupMesh.getParent().rename("outDupMesh")
+        hyperShade(assign="lambert1")
         outStripMesh = createNode(nt.Mesh)
-        outStripMesh.getParent().rename('outStripMesh')
-        hyperShade(assign='lambert1')
+        outStripMesh.getParent().rename("outStripMesh")
+        hyperShade(assign="lambert1")
         outFlatStripMesh = createNode(nt.Mesh)
-        outFlatStripMesh.getParent().rename('outFlatStripMesh')
-        hyperShade(assign='lambert1')
-    
+        outFlatStripMesh.getParent().rename("outFlatStripMesh")
+        hyperShade(assign="lambert1")
+
         srcDup.outMesh.connect(node.inDupMesh, f=1)
-    
-        try: srcDupS.outMesh.connect(node.inSDupMesh, f=1)
-        except: pass
-    
-        try: srcDupE.outMesh.connect(node.inEDupMesh, f=1)
-        except: pass
-    
-        try: srcDupMid.outMesh.connect(node.inMDupMesh, f=1)
-        except: pass
-    
+
+        try:
+            srcDupS.outMesh.connect(node.inSDupMesh, f=1)
+        except:
+            pass
+
+        try:
+            srcDupE.outMesh.connect(node.inEDupMesh, f=1)
+        except:
+            pass
+
+        try:
+            srcDupMid.outMesh.connect(node.inMDupMesh, f=1)
+        except:
+            pass
+
         node.outDupMesh.connect(outDupMesh.inMesh, f=1)
         node.outMesh.connect(outStripMesh.inMesh, f=1)
         node.outFlatMesh.connect(outFlatStripMesh.inMesh, f=1)
-    
+
         select(outDupMesh, outFlatStripMesh)
         mc.CreateWrap()
-    
-        wrapNode = outDupMesh.inMesh.inputs()[0]    
-    
+
+        wrapNode = outDupMesh.inMesh.inputs()[0]
+
         oldWrapBase = wrapNode.basePoints[0].inputs()
-    
+
         node.outFlatMesh.connect(wrapNode.basePoints[0], f=1)
         node.outMesh.connect(wrapNode.driverPoints[0], f=1)
-    
+
         hide(outFlatStripMesh.getParent())
-    
+
         if deleteStrip:
             delete(oldWrapBase, outStripMesh.getParent())
         else:
             delete(oldWrapBase)
-    
+
         parent(outFlatStripMesh.getParent(), stripGroup)
-    
+
         select(outDupMesh.getParent())
 
-def wrapperStrip(flatStrip = False, createCurves = False):
-    if not pluginInfo('wrapperStrip.py', q=1, l=1):
-        try: loadPlugin('wrapperStrip.py')
+
+def wrapperStrip(flatStrip=False, createCurves=False):
+    if not pluginInfo("wrapperStrip.py", q=1, l=1):
+        try:
+            loadPlugin("wrapperStrip.py")
         except:
-            inViewMessage(msg='Fail on plugin load' , fade=1, fst=500, pos='midCenter')
+            inViewMessage(msg="Fail on plugin load", fade=1, fst=500, pos="midCenter")
             return
 
     mesh = ls(sl=1, et=nt.Mesh, dag=1, ni=1)
-    if mesh: mesh = mesh[0]
-    
+    if mesh:
+        mesh = mesh[0]
+
     if not mesh:
         liveMesh = ls(lv=1, dag=1, et=nt.Mesh, ni=1)
         if not liveMesh:
-            inViewMessage(msg='No live or selected mesh' , fade=1, fst=500, pos='midCenter')
+            inViewMessage(
+                msg="No live or selected mesh", fade=1, fst=500, pos="midCenter"
+            )
             return
         else:
             mesh = liveMesh[0]
-            
+
     if not mesh:
-        inViewMessage(msg='No live or selected mesh' , fade=1, fst=500, pos='midCenter')
+        inViewMessage(msg="No live or selected mesh", fade=1, fst=500, pos="midCenter")
 
     crvs = ls(sl=1, dag=1, et=nt.NurbsCurve, ni=1)
     if not crvs:
-        inViewMessage(msg='Select mesh and curve' , fade=1, fst=500, pos='midCenter')
+        inViewMessage(msg="Select mesh and curve", fade=1, fst=500, pos="midCenter")
         return
-    
-    makeIdentity(crvs+[mesh.getParent()], a=1, r=1, s=1, t=1)
-    
+
+    makeIdentity(crvs + [mesh.getParent()], a=1, r=1, s=1, t=1)
+
     nodes = []
     stripMeshes = []
     flatStripMeshes = []
     for crv in crvs:
-        try: node = createNode('wrapperStrip')
-        except: node = None
-    
-        if not node: 
-            inViewMessage(msg = 'wrapperStrip node is not created', fade=1, fst=500)
+        try:
+            node = createNode("wrapperStrip")
+        except:
+            node = None
+
+        if not node:
+            inViewMessage(msg="wrapperStrip node is not created", fade=1, fst=500)
             return
-        
-        if not objExists('stripMeshes'):
-            stripGroup = createNode(nt.Transform, n='stripMeshes')
+
+        if not objExists("stripMeshes"):
+            stripGroup = createNode(nt.Transform, n="stripMeshes")
         else:
-            stripGroup = PyNode('stripMeshes')
-    
+            stripGroup = PyNode("stripMeshes")
+
         crv.worldSpace[0].connect(node.inCurve, f=1)
-        
-        try: mesh.outMesh.connect(node.inMesh, f=1)
-        except: inViewMessage(msg='Failed connect to mesh' , fade=1, fst=500, pos='midCenter')
-    
+
+        try:
+            mesh.outMesh.connect(node.inMesh, f=1)
+        except:
+            inViewMessage(
+                msg="Failed connect to mesh", fade=1, fst=500, pos="midCenter"
+            )
+
         outStripMesh = createNode(nt.Mesh)
-        outStripMesh.getParent().rename('outStripMesh')
+        outStripMesh.getParent().rename("outStripMesh")
         node.outMesh.connect(outStripMesh.inMesh, f=1)
-        hyperShade(assign='lambert1')
-        
+        hyperShade(assign="lambert1")
+
         node.noMidEdge.set(True)
-        
+
         if flatStrip:
             outFlatStripMesh = createNode(nt.Mesh)
-            outFlatStripMesh.getParent().rename('outFlatStripMesh')
-    
+            outFlatStripMesh.getParent().rename("outFlatStripMesh")
+
             node.outFlatMesh.connect(outFlatStripMesh.inMesh, f=1)
-            hyperShade(assign='lambert1')
-        
-        
+            hyperShade(assign="lambert1")
+
             flatStripMeshes.append(outFlatStripMesh)
             parent(outFlatStripMesh.getParent(), stripGroup)
-            
+
         if createCurves:
             crvA = createNode(nt.NurbsCurve)
             crvB = createNode(nt.NurbsCurve)
@@ -1809,212 +2112,275 @@ def wrapperStrip(flatStrip = False, createCurves = False):
             node.outCurveB.connect(crvB.create, f=1)
             crvA.dispCV.set(1)
             crvB.dispCV.set(1)
-    
-        
+
         nodes.append(node)
         node.dv.lock(1)
         stripMeshes.append(outStripMesh)
 
     select(stripMeshes, nodes)
-    setToolTo('ShowManips')  
+    setToolTo("ShowManips")
     return nodes, stripMeshes, flatStripMeshes
 
-def wrapperStripForMASH(crv, meshes, liveMesh):
-    if not crv or not meshes or not liveMesh: return
-    
-    if not pluginInfo('wrapperStrip.py', q=1, l=1):
-        try: loadPlugin('wrapperStrip.py')
-        except:
-            inViewMessage(msg='Fail on plugin load' , fade=1, fst=500, pos='midCenter')
-            return
-    
-    mesh = meshes[0]
-    
-    makeIdentity([crv, mesh.getParent()], a=1, r=1, s=1, t=1)
 
-    try: node = createNode('wrapperStrip')
-    except: 
-        inViewMessage(msg = 'wrapperStrip node is not created', fade=1, fst=500)
+def wrapperStripForMASH(crv, meshes, liveMesh):
+    if not crv or not meshes or not liveMesh:
         return
 
-    if not objExists('stripMeshes'):
-        stripGroup = createNode(nt.Transform, n='stripMeshes')
+    if not pluginInfo("wrapperStrip.py", q=1, l=1):
+        try:
+            loadPlugin("wrapperStrip.py")
+        except:
+            inViewMessage(msg="Fail on plugin load", fade=1, fst=500, pos="midCenter")
+            return
+
+    mesh = meshes[0]
+
+    makeIdentity([crv, mesh.getParent()], a=1, r=1, s=1, t=1)
+
+    try:
+        node = createNode("wrapperStrip")
+    except:
+        inViewMessage(msg="wrapperStrip node is not created", fade=1, fst=500)
+        return
+
+    if not objExists("stripMeshes"):
+        stripGroup = createNode(nt.Transform, n="stripMeshes")
     else:
-        stripGroup = PyNode('stripMeshes')
+        stripGroup = PyNode("stripMeshes")
 
     crv.worldSpace[0].connect(node.inCurve, f=1)
-    
-    try: liveMesh.outMesh.connect(node.inMesh, f=1)
-    except: 
-        inViewMessage(msg='Failed connect to mesh' , fade=1, fst=500, pos='midCenter')
-        print 'Failed connect to live Mesh'
-    
+
+    try:
+        liveMesh.outMesh.connect(node.inMesh, f=1)
+    except:
+        inViewMessage(msg="Failed connect to mesh", fade=1, fst=500, pos="midCenter")
+        print("Failed connect to live Mesh")
+
     mesh.boundingBoxSizeZ.connect(node.inRepMeshMiddleLength, f=1)
-    
+
     node.dv.lock(1)
 
-    setToolTo('ShowManips')  
+    setToolTo("ShowManips")
     return node
 
-def polyStrips(flatStrips = False, createCurves = False):
-    wrapperStrip(flatStrip = flatStrips, createCurves = createCurves)
-    
+
+def polyStrips(flatStrips=False, createCurves=False):
+    wrapperStrip(flatStrip=flatStrips, createCurves=createCurves)
+
+
 def deformAlongCurve2(deleteStrip=True):
-    if not pluginInfo('CurvedCopies.py', q=1, l=1):
-        try: loadPlugin('CurvedCopies.py')
+    if not pluginInfo("CurvedCopies.py", q=1, l=1):
+        try:
+            loadPlugin("CurvedCopies.py")
         except:
-            inViewMessage(msg='Fail on plugin load' , fade=1, fst=500, pos='midCenter')
+            inViewMessage(msg="Fail on plugin load", fade=1, fst=500, pos="midCenter")
             return
 
     meshes = ls(sl=1, dag=1, et=nt.Mesh, ni=1)
-    if len(meshes) >= 4: srcDup, srcDupS, srcDupE, srcDupMid = meshes[:4]
-    elif len(meshes) == 3: srcDup, srcDupS, srcDupE = meshes
-    elif len(meshes) == 2: srcDup, srcDupS = meshes
-    elif len(meshes) == 1: srcDup = meshes[0]
-    elif len(meshes) == 0: 
-        inViewMessage(msg='Select 1-4 meshes and curve' , fade=1, fst=500, pos='midCenter')
+    if len(meshes) >= 4:
+        srcDup, srcDupS, srcDupE, srcDupMid = meshes[:4]
+    elif len(meshes) == 3:
+        srcDup, srcDupS, srcDupE = meshes
+    elif len(meshes) == 2:
+        srcDup, srcDupS = meshes
+    elif len(meshes) == 1:
+        srcDup = meshes[0]
+    elif len(meshes) == 0:
+        inViewMessage(
+            msg="Select 1-4 meshes and curve", fade=1, fst=500, pos="midCenter"
+        )
         return
 
     crvs = ls(sl=1, dag=1, et=nt.NurbsCurve, ni=1)
     if not crvs:
-        inViewMessage(msg='Select 1-4 meshes and one curve' , fade=1, fst=500, pos='midCenter')
+        inViewMessage(
+            msg="Select 1-4 meshes and one curve", fade=1, fst=500, pos="midCenter"
+        )
         return
-    
-    objs=[crv.getParent() for crv in crvs]
-    objs+=[mesh.getParent() for mesh in meshes]
-    #makeIdentity(objs, a=1, r=1, s=1, t=1)
+
+    objs = [crv.getParent() for crv in crvs]
+    objs += [mesh.getParent() for mesh in meshes]
+    # makeIdentity(objs, a=1, r=1, s=1, t=1)
     makeIdentity(crvs, a=1, r=1, s=1, t=1)
-    
+
     crvCopyNodes = []
     for crv in crvs:
-        try: node = createNode('curvedCopies')
-        except: node = None
-    
-        if not node: 
-            inViewMessage(msg = 'CurvedCopies node is not created', fade=1, fst=500)
+        try:
+            node = createNode("curvedCopies")
+        except:
+            node = None
+
+        if not node:
+            inViewMessage(msg="CurvedCopies node is not created", fade=1, fst=500)
             return
-        
+
         crvCopyNodes.append(node)
-        
+
         crv.worldSpace[0].connect(node.inCurve, f=1)
-    
+
         outDupMesh = createNode(nt.Mesh)
-        outDupMesh.getParent().rename('outDupMesh')
-        hyperShade(assign='lambert1')
-    
+        outDupMesh.getParent().rename("outDupMesh")
+        hyperShade(assign="lambert1")
+
         srcDup.outMesh.connect(node.inDupMesh, f=1)
-    
-        try: srcDupS.outMesh.connect(node.inSDupMesh, f=1)
-        except: pass
-    
-        try: srcDupE.outMesh.connect(node.inEDupMesh, f=1)
-        except: pass
-    
-        try: srcDupMid.outMesh.connect(node.inMDupMesh, f=1)
-        except: pass
-    
+
+        try:
+            srcDupS.outMesh.connect(node.inSDupMesh, f=1)
+        except:
+            pass
+
+        try:
+            srcDupE.outMesh.connect(node.inEDupMesh, f=1)
+        except:
+            pass
+
+        try:
+            srcDupMid.outMesh.connect(node.inMDupMesh, f=1)
+        except:
+            pass
+
         node.outDupMesh.connect(outDupMesh.inMesh, f=1)
-        
-        motionPathNode = pathAnimation(outDupMesh, c=crv, fm=1, f=1, fa='z', ua='y', wut="vector", wu=[0,1,0], iu=0, b=0, stu=1, etu=2)
+
+        motionPathNode = pathAnimation(
+            outDupMesh,
+            c=crv,
+            fm=1,
+            f=1,
+            fa="z",
+            ua="y",
+            wut="vector",
+            wu=[0, 1, 0],
+            iu=0,
+            b=0,
+            stu=1,
+            etu=2,
+        )
         motionPathNode = PyNode(motionPathNode)
-        
+
         ins = motionPathNode.uValue.inputs(p=1, c=1)[0]
-        disconnectAttr(ins[1], ins[0])    
-        motionPathNode.uValue.set(0)        
-        
+        disconnectAttr(ins[1], ins[0])
+        motionPathNode.uValue.set(0)
+
         select(outDupMesh.getParent())
-        
-        print 'selected: ', ls(sl=1)
-        res = mEval('flow -divisions 2 2 30 -objectCentered 0 -localCompute 1 -localDivisions 2 2 2;')
-                
-        flowNode = PyNode(res[0] )
-        ffdNode = PyNode(res[1] )
-        ffdLatticeNode = PyNode(res[2] )
-        ffdBaseNode = PyNode(res[3] )
-        
+
+        print("selected: ", ls(sl=1))
+        res = mEval(
+            "flow -divisions 2 2 30 -objectCentered 0 -localCompute 1 -localDivisions 2 2 2;"
+        )
+
+        flowNode = PyNode(res[0])
+        ffdNode = PyNode(res[1])
+        ffdLatticeNode = PyNode(res[2])
+        ffdBaseNode = PyNode(res[3])
+
         ffdNode.outsideLattice.set(1)
-        
+
         hide(ffdLatticeNode, ffdBaseNode)
         select(outDupMesh.getParent())
-    
-        try: hide(crv.getChildren())
-        except: pass
+
+        try:
+            hide(crv.getChildren())
+        except:
+            pass
     select(crvCopyNodes)
-    setToolTo('ShowManips')        
-            
+    setToolTo("ShowManips")
+
+
 def deformAlongCurve():
     meshes = ls(sl=1, dag=1, et=nt.Mesh, ni=1)
     curves = ls(sl=1, dag=1, et=nt.NurbsCurve, ni=1)
-    
-    if not meshes: return
-    if not curves: return
-    
+
+    if not meshes:
+        return
+    if not curves:
+        return
+
     resMeshes = []
     crvCopyNodes = []
     for crv in curves:
         mesh = meshes[0]
-        #crv = curves[0]
-        
-        dupNode = createNode('curvedCopies')
+        # crv = curves[0]
+
+        dupNode = createNode("curvedCopies")
         crvCopyNodes.append(dupNode)
-        
+
         crv.worldSpace.connect(dupNode.inCurve, f=1)
-        mesh.outMesh.connect(dupNode.inDupMesh, f=1)        
-        
+        mesh.outMesh.connect(dupNode.inDupMesh, f=1)
+
         outDupsMesh = createNode(nt.Mesh)
         dupNode.outDupMesh.connect(outDupsMesh.inMesh, f=1)
-        
+
         resMeshes.append(outDupsMesh.getParent())
-        
-        motionPathNode = pathAnimation(outDupsMesh, c=crv, fm=1, f=1, fa='z', ua='y', wut="vector", wu=[0,1,0], iu=0, b=0, stu=1, etu=2)
+
+        motionPathNode = pathAnimation(
+            outDupsMesh,
+            c=crv,
+            fm=1,
+            f=1,
+            fa="z",
+            ua="y",
+            wut="vector",
+            wu=[0, 1, 0],
+            iu=0,
+            b=0,
+            stu=1,
+            etu=2,
+        )
         motionPathNode = PyNode(motionPathNode)
-        
+
         ins = motionPathNode.uValue.inputs(p=1, c=1)[0]
-        disconnectAttr(ins[1], ins[0])    
+        disconnectAttr(ins[1], ins[0])
         motionPathNode.uValue.set(0)
-        
+
         select(outDupsMesh)
-        hyperShade(assign='lambert1')
-        
+        hyperShade(assign="lambert1")
+
         select(outDupsMesh.getParent())
-        res = mEval('flow -divisions 2 2 30 -objectCentered 0 -localCompute 1 -localDivisions 2 2 2;')
-        
-        flowNode = PyNode(res[0] )
-        ffdNode = PyNode(res[1] )
-        ffdLatticeNode = PyNode(res[2] )
-        ffdBaseNode = PyNode(res[3] )
-        
+        res = mEval(
+            "flow -divisions 2 2 30 -objectCentered 0 -localCompute 1 -localDivisions 2 2 2;"
+        )
+
+        flowNode = PyNode(res[0])
+        ffdNode = PyNode(res[1])
+        ffdLatticeNode = PyNode(res[2])
+        ffdBaseNode = PyNode(res[3])
+
         ffdNode.outsideLattice.set(1)
-        
+
         hide(ffdLatticeNode, ffdBaseNode)
         select(outDupsMesh.getParent())
-    
-        try: hide(crv.getChildren())
-        except: pass
+
+        try:
+            hide(crv.getChildren())
+        except:
+            pass
     select(crvCopyNodes)
-    setToolTo('ShowManips')
-    
+    setToolTo("ShowManips")
+
+
 def polyDistribute(crvSh=None, edges=None):
     curves = ls(sl=1, dag=1, et=nt.NurbsCurve, ni=1)
     edges = ysvUtils.SEL.edges()
     mesh = edges[0].node()
 
-    if  not curves: return
-    crvSh = curves[0]     
+    if not curves:
+        return
+    crvSh = curves[0]
 
     try:
         select(edges)
         crvTr, polyEdgeToCurveNode = polyToCurve(f=0, dg=1)
     except:
-        error('polyToCurveFailed in ysvPolyOps.polyDistribute(), script stopped')
+        error("polyToCurveFailed in ysvPolyOps.polyDistribute(), script stopped")
         return
 
-    if not pluginInfo('polyDistribute.py', q=1, l=1):
-        loadPlugin('polyDistribute.py', qt=1)
+    if not pluginInfo("polyDistribute.py", q=1, l=1):
+        loadPlugin("polyDistribute.py", qt=1)
 
-    try:node = createNode('polyDistribute')
-    except:error('cannot create node polyDistribute')
-
+    try:
+        node = createNode("polyDistribute")
+    except:
+        error("cannot create node polyDistribute")
 
     makeIdentity(mesh.getParent(), a=1, r=1, s=1, t=1)
     makeIdentity(crvSh.getParent(), a=1, r=1, s=1, t=1)
@@ -2023,25 +2389,25 @@ def polyDistribute(crvSh=None, edges=None):
     node.startParam.set(minPar)
     node.endParam.set(maxPar)
 
-    polyEdgeCrvNode = PyNode(polyEdgeToCurveNode) 
+    polyEdgeCrvNode = PyNode(polyEdgeToCurveNode)
     polyEdgeCrvNode.ics.connect(node.ics, f=1)
 
     polyEdgeCrvNode.outputcurve.disconnect()
     delete(crvTr)
-    
+
     mesh.o.connect(node.inMesh, f=1)
     mesh.wm[0].connect(node.im, f=1)
     crvSh.ws[0].connect(node.inc, f=1)
 
-
     resMesh = createNode(nt.Mesh, p=mesh.getParent())
     mesh.intermediateObject.set(1)
 
-    hyperShade(a='lambert1')
+    hyperShade(a="lambert1")
 
     node.outMesh.connect(resMesh.i, f=1)
     select(resMesh, node)
-    setToolTo('ShowManips')
+    setToolTo("ShowManips")
+
 
 def connectEdgeLoops():
     edges = ls(sl=1)
@@ -2057,15 +2423,15 @@ def connectEdgeLoops():
     v2Lng = len(v2)
     lng = min(v1Lng, v2Lng)
 
-    dist1, dist2  = 0, 0
+    dist1, dist2 = 0, 0
 
-    #if v2Lng>lng:
+    # if v2Lng>lng:
 
     for i in range(lng):
-        dist1 += (pointPosition(v1[i])-pointPosition(v2[i])).length()
-        dist2 += (pointPosition(v1[i])-pointPosition(v2[lng-i-1])).length()
+        dist1 += (pointPosition(v1[i]) - pointPosition(v2[i])).length()
+        dist2 += (pointPosition(v1[i]) - pointPosition(v2[lng - i - 1])).length()
 
-    print dist1, dist2
+    print(dist1, dist2)
 
     if dist1 > dist2:
         v1.reverse()
@@ -2074,7 +2440,7 @@ def connectEdgeLoops():
     verts2 = [v.index() for v in v2]
 
     for i in range(lng):
-        #print verts1[i], verts2[i]
+        # print verts1[i], verts2[i]
         delete(meshTr, ch=1)
         mesh = ls(meshTr, dag=1, et=nt.Mesh, ni=1)[0]
         select(cl=1)
@@ -2084,185 +2450,209 @@ def connectEdgeLoops():
         select(mesh.vtx[verts1[i]], mesh.vtx[verts2[i]])
         try:
             mc.ConnectComponents()
-        except: pass
+        except:
+            pass
 
 
-def mashNetwork(networkName = 'MASH#', objs = []):
-    #get the number of selected objects
+def mashNetwork(networkName="MASH#", objs=[]):
+    # get the number of selected objects
     if not objs:
         sel = ls(sl=1)
     else:
         sel = objs
-    
+
     numSelObjs = len(sel)
 
-    #create the waiter
-    waiter = createNode(nt.MASH_Waiter, n='MASH')
-    addAttr(waiter, longName='instancerMessage', at='message')
-    #set the presets folder
-    presetsFolderOpVar  = optionVar(q='mPFL')
-    waiter.filename.set(presetsFolderOpVar, type='string')
-    #create a Distribute node
-    nodeName = (waiter.name()+"_Distribute");
-    distNode = createNode(nt.MASH_Distribute, n = nodeName)
+    # create the waiter
+    waiter = createNode(nt.MASH_Waiter, n="MASH")
+    addAttr(waiter, longName="instancerMessage", at="message")
+    # set the presets folder
+    presetsFolderOpVar = optionVar(q="mPFL")
+    waiter.filename.set(presetsFolderOpVar, type="string")
+    # create a Distribute node
+    nodeName = waiter.name() + "_Distribute"
+    distNode = createNode(nt.MASH_Distribute, n=nodeName)
     distNode.amplitudeX.set(0)
 
-    #for convenience we match the Map Direction to the initial linear distribution
+    # for convenience we match the Map Direction to the initial linear distribution
     distNode.mapDirection.set(4)
 
-    mashPythonNode = createNode(nt.MASH_Python, name=waiter.name()+'_Python')
-    mashPythonNode.pyScript.set('')
-    
-    #connect the Distribute node to the pythonNode
-    
+    mashPythonNode = createNode(nt.MASH_Python, name=waiter.name() + "_Python")
+    mashPythonNode.pyScript.set("")
+
+    # connect the Distribute node to the pythonNode
+
     distNode.positionOutPP.connect(mashPythonNode.positionInPP, f=1)
     distNode.scaleOutPP.connect(mashPythonNode.scaleInPP, f=1)
     distNode.rotationOutPP.connect(mashPythonNode.rotationInPP, f=1)
     distNode.idOutPP.connect(mashPythonNode.idInPP, f=1)
     distNode.visibilityOutPP.connect(mashPythonNode.visibilityInPP, f=1)
-    
+
     mashPythonNode.scaleOutPP.connect(waiter.inScalePP, f=1)
     mashPythonNode.rotationOutPP.connect(waiter.inRotationPP, f=1)
     mashPythonNode.positionOutPP.connect(waiter.inPositionPP, f=1)
     mashPythonNode.idOutPP.connect(waiter.inIdPP, f=1)
     mashPythonNode.visibilityOutPP.connect(waiter.inVisibilityPP, f=1)
-    
+
     distNode.waiterMessage.connect(waiter.waiterMessage, f=1)
 
-    #----------------REPRO
-    reproName = waiter.name()+"_Repro";
-    instancer =  createNode(nt.MASH_Repro, name = reproName, ss=1)
-    
-    repro_mesh_shape = createNode(nt.Mesh,n=instancer.name() + "MeshShape")
+    # ----------------REPRO
+    reproName = waiter.name() + "_Repro"
+    instancer = createNode(nt.MASH_Repro, name=reproName, ss=1)
+
+    repro_mesh_shape = createNode(nt.Mesh, n=instancer.name() + "MeshShape")
     repro_mesh = repro_mesh_shape.getParent()
-    addAttr(repro_mesh, ln = 'mashOutFilter', at='bool')
+    addAttr(repro_mesh, ln="mashOutFilter", at="bool")
     instancer.outMesh.connect(repro_mesh_shape.inMesh, f=1)
     repro_mesh_shape.worldInverseMatrix[0].connect(instancer.meshMatrix)
     repro_mesh_shape.message.connect(instancer.meshMessage)
-    
-    #connect the Waiter to the Instancer or Repro node
+
+    # connect the Waiter to the Instancer or Repro node
     waiter.multiInstancer[0].connect(instancer.inputPoints, f=1)
 
     # add a message attribute to the instancer
-    addAttr(instancer, longName='instancerMessage', at='message')
-    #connect message attributes to the instancer so we can find it later if needed
+    addAttr(instancer, longName="instancerMessage", at="message")
+    # connect message attributes to the instancer so we can find it later if needed
     waiter.instancerMessage.connect(instancer.instancerMessage, f=1)
-    
-        #if the user added more then one object to the network, set the number of points to reflect that
+
+    # if the user added more then one object to the network, set the number of points to reflect that
     if numSelObjs > 1:
         distNode.pointCount.set(numSelObjs)
 
         # add the selected objects to the instancer or Repro
     for trans in sel:
         # connect the meshes to the Repro node with this hilarious Python
-        #print 'all mash nodes: ', ls(et=nt.MASH_Waiter)
-        mash_repro_utils.connect_mesh_group(instancer.name(),trans.name())
-        #print 'all mash nodes: ', ls(et=nt.MASH_Waiter)
+        # print 'all mash nodes: ', ls(et=nt.MASH_Waiter)
+        mash_repro_utils.connect_mesh_group(instancer.name(), trans.name())
+        # print 'all mash nodes: ', ls(et=nt.MASH_Waiter)
 
-    
-    
-    #update the Repro interface
+    # update the Repro interface
     mash_repro_aetemplate.refresh_all_aetemplates(force=True)
 
     # finally select the Waiter
     select(waiter)
-    
+
     return waiter, instancer, distNode, mashPythonNode, repro_mesh_shape
 
-def mashNetworkSimple(networkName = 'MASH#', objs = []):
-    #get the number of selected objects
+
+def mashNetworkSimple(networkName="MASH#", objs=[]):
+    # get the number of selected objects
     if not objs:
         sel = ls(sl=1)
     else:
         sel = objs
-    
+
     numSelObjs = len(sel)
 
-    #create the waiter
-    waiter = createNode(nt.MASH_Waiter, n='MASH')
-    addAttr(waiter, longName='instancerMessage', at='message')
-    #set the presets folder
-    presetsFolderOpVar  = optionVar(q='mPFL')
-    waiter.filename.set(presetsFolderOpVar, type='string')
-    #create a Distribute node
+    # create the waiter
+    waiter = createNode(nt.MASH_Waiter, n="MASH")
+    addAttr(waiter, longName="instancerMessage", at="message")
+    # set the presets folder
+    presetsFolderOpVar = optionVar(q="mPFL")
+    waiter.filename.set(presetsFolderOpVar, type="string")
+    # create a Distribute node
 
+    # ----------------REPRO
+    reproName = waiter.name() + "_Repro"
+    instancer = createNode(nt.MASH_Repro, name=reproName, ss=1)
 
-    #----------------REPRO
-    reproName = waiter.name()+"_Repro";
-    instancer =  createNode(nt.MASH_Repro, name = reproName, ss=1)
-    
-    repro_mesh_shape = createNode(nt.Mesh,n=instancer.name() + "MeshShape")
+    repro_mesh_shape = createNode(nt.Mesh, n=instancer.name() + "MeshShape")
     repro_mesh = repro_mesh_shape.getParent()
-    addAttr(repro_mesh, ln = 'mashOutFilter', at='bool')
+    addAttr(repro_mesh, ln="mashOutFilter", at="bool")
     instancer.outMesh.connect(repro_mesh_shape.inMesh, f=1)
     repro_mesh_shape.worldInverseMatrix[0].connect(instancer.meshMatrix)
     repro_mesh_shape.message.connect(instancer.meshMessage)
-    
-    #connect the Waiter to the Instancer or Repro node
+
+    # connect the Waiter to the Instancer or Repro node
     waiter.multiInstancer[0].connect(instancer.inputPoints, f=1)
 
     # add a message attribute to the instancer
-    addAttr(instancer, longName='instancerMessage', at='message')
-    #connect message attributes to the instancer so we can find it later if needed
+    addAttr(instancer, longName="instancerMessage", at="message")
+    # connect message attributes to the instancer so we can find it later if needed
     waiter.instancerMessage.connect(instancer.instancerMessage, f=1)
-    
-        #if the user added more then one object to the network, set the number of points to reflect that
+
+    # if the user added more then one object to the network, set the number of points to reflect that
     for trans in sel:
         # connect the meshes to the Repro node with this hilarious Python
-        #print 'all mash nodes: ', ls(et=nt.MASH_Waiter)
-        mash_repro_utils.connect_mesh_group(instancer.name(),trans.name())
-        #print 'all mash nodes: ', ls(et=nt.MASH_Waiter)
+        # print 'all mash nodes: ', ls(et=nt.MASH_Waiter)
+        mash_repro_utils.connect_mesh_group(instancer.name(), trans.name())
+        # print 'all mash nodes: ', ls(et=nt.MASH_Waiter)
 
-    
-    
-    #update the Repro interface
+    # update the Repro interface
     mash_repro_aetemplate.refresh_all_aetemplates(force=True)
 
     # finally select the Waiter
     select(waiter)
-    
+
     return waiter, instancer, repro_mesh_shape
-    
+
+
 def mashCurveSetup():
-    def warningMess(): inViewMessage(msg='Select mesh and curve and make live mesh' , fade=1, fst=500, pos='midCenter')
-    
+    def warningMess():
+        inViewMessage(
+            msg="Select mesh and curve and make live mesh",
+            fade=1,
+            fst=500,
+            pos="midCenter",
+        )
+
     curves = ls(sl=1, dag=1, et=nt.NurbsCurve, ni=1)
     meshes = ls(sl=1, dag=1, et=nt.Mesh, ni=1)
-    try: liveMesh = ls(lv=1, dag=1, et=nt.Mesh, ni=1)[0]
-    except: warningMess()
-    
+    try:
+        liveMesh = ls(lv=1, dag=1, et=nt.Mesh, ni=1)[0]
+    except:
+        warningMess()
+
     if meshes:
         meshesTr = [mesh.getParent() for mesh in meshes]
-        
+
     if not curves or not meshes or not liveMesh:
         warningMess()
         return
-    
+
     startMesh, middleMesh, insertionMesh, endMesh = None, None, None, None
-    
-    if len(meshes)==1: middleMesh = meshes[0]
-    elif len(meshes)==2: startMesh, middleMesh = meshes[:2]
-    elif len(meshes)==3: startMesh, middleMesh, endMesh = meshes[:3]
-    elif len(meshes)>=4: startMesh, middleMesh, insertionMesh, endMesh = meshes[:4]
-    
+
+    if len(meshes) == 1:
+        middleMesh = meshes[0]
+    elif len(meshes) == 2:
+        startMesh, middleMesh = meshes[:2]
+    elif len(meshes) == 3:
+        startMesh, middleMesh, endMesh = meshes[:3]
+    elif len(meshes) >= 4:
+        startMesh, middleMesh, insertionMesh, endMesh = meshes[:4]
+
     for crv in curves:
-        waiter, instancer, repro_mesh_shape= mashNetworkSimple('MASH#', meshesTr)
+        waiter, instancer, repro_mesh_shape = mashNetworkSimple("MASH#", meshesTr)
         wrapperStripNode = wrapperStripForMASH(crv, meshes, liveMesh)
-        
-        try: startMesh.boundingBoxSizeZ.connect(wrapperStripNode.inRepMeshStartLength, f=1)
-        except: pass
-        
-        try: middleMesh.boundingBoxSizeZ.connect(wrapperStripNode.inRepMeshMiddleLength, f=1)
-        except: pass
 
-        try: insertionMesh.boundingBoxSizeZ.connect(wrapperStripNode.inRepMeshInsertionLength, f=1)
-        except: pass
+        try:
+            startMesh.boundingBoxSizeZ.connect(
+                wrapperStripNode.inRepMeshStartLength, f=1
+            )
+        except:
+            pass
 
-        try: endMesh.boundingBoxSizeZ.connect(wrapperStripNode.inRepMeshEndLength, f=1)
-        except: pass
-        
+        try:
+            middleMesh.boundingBoxSizeZ.connect(
+                wrapperStripNode.inRepMeshMiddleLength, f=1
+            )
+        except:
+            pass
+
+        try:
+            insertionMesh.boundingBoxSizeZ.connect(
+                wrapperStripNode.inRepMeshInsertionLength, f=1
+            )
+        except:
+            pass
+
+        try:
+            endMesh.boundingBoxSizeZ.connect(wrapperStripNode.inRepMeshEndLength, f=1)
+        except:
+            pass
+
         wrapperStripNode.posPP.connect(waiter.inPositionPP, f=1)
         wrapperStripNode.scPP.connect(waiter.inScalePP, f=1)
         wrapperStripNode.idsPP.connect(waiter.inIdPP, f=1)
         wrapperStripNode.visibilityPP.connect(waiter.inVisibilityPP, f=1)
-        #wrapperStripNode.mashAmplitude.connect(waiter.amplitudeZ, f=1)
+        # wrapperStripNode.mashAmplitude.connect(waiter.amplitudeZ, f=1)
