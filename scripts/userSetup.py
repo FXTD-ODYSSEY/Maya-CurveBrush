@@ -28,17 +28,33 @@ ysv_shelf_config = [
             import_module("ysv.ysvPaintCurves").paintCtx("ysvCurveTweaker").run()
         ),
         "image": "insertKnot.png",
-        "imageOverlayLabel": "ctx",
+        "imageOverlayLabel": "ysv",
     },
     {
         "command": lambda: import_module("ysv.ysvPaintCurves").UI().create(),
         "image": "makeClip.png",
         "imageOverlayLabel": "UI",
     },
+    {"command": "separator"},
+    {
+        "command": lambda: pm.setToolTo(pm.om1CurveBrushContext()),
+        "image": "insertKnot.png",
+        "imageOverlayLabel": "om1",
+    },
+    {
+        "command": lambda: pm.setToolTo(pm.om2CurveBrushContext()),
+        "image": "insertKnot.png",
+        "imageOverlayLabel": "om2",
+    },
+    {
+        "command": lambda: pm.setToolTo(pm.curveBrushContext()),
+        "image": "insertKnot.png",
+        "imageOverlayLabel": "cpp",
+    },
 ]
 
 
-def setup_ysv_tool(shelf_name="ysv"):
+def setup_ysv_tool(shelf_name="CurveBrush"):
     gShelfTopLevel = pm.melGlobals["gShelfTopLevel"]
     shelf_path = "|".join([gShelfTopLevel, shelf_name])
 
@@ -61,13 +77,24 @@ def setup_ysv_tool(shelf_name="ysv"):
 
     for config in ysv_shelf_config:
         command = config.get("command", "")
-        image = config.get("image", "pythonFamily.png")
-        pm.shelfButton(
-            command=command,
-            image=image,
-            imageOverlayLabel=config.get("imageOverlayLabel", ""),
-            sourceType="python",
-        )
+        if command == "separator":
+            pm.separator(
+                style="shelf",
+                horizontal=0,
+                highlightColor=(0.321569, 0.521569, 0.65098),
+                preventOverride=0,
+                visible=1,
+                enable=1,
+                manage=1,
+                enableBackground=0,
+            )
+        else:
+            pm.shelfButton(
+                command=command,
+                image=config.get("image", "pythonFamily.png"),
+                imageOverlayLabel=config.get("imageOverlayLabel", ""),
+                sourceType="python",
+            )
 
 
 def add_sys_path():
@@ -81,6 +108,12 @@ def main():
     add_sys_path()
     setup_ysv_tool()
     curve_brush_porperties.setup_mel()
+
+    for plugin_name in ["om1_curve_brush.py", "om2_curve_brush.py", "curveBrush.mll"]:
+        plugin_base = os.path.splitext(plugin_name)[0]
+        if pm.pluginInfo(plugin_base, q=1, l=1):
+            pm.unloadPlugin(plugin_base)
+        pm.loadPlugin(plugin_name)
 
 
 if not pm.about(batch=1):

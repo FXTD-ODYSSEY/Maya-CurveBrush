@@ -20,10 +20,10 @@ cmds.file(f=1, new=1)
 
 if cmds.pluginInfo('om2_curve_brush',q=1,l=1):
     cmds.unloadPlugin('om2_curve_brush')
-cmds.loadPlugin(r"F:\repo\CMakeMaya\modules\Maya-CurveBrush\plug-ins\om2_curve_brush.py")
+cmds.loadPlugin("om2_curve_brush.py")
 
 cmds.circle(s=100)
-ctx = cmds.curveBrushContext()
+ctx = cmds.om2CurveBrushContext()
 cmds.setToolTo(ctx)
 """
 
@@ -432,7 +432,7 @@ class CurveBrushTool(omui.MPxToolCommand):
         self.strength = value
 
 
-CONTEXT_NAME = "c" + CurveBrushContext.__name__[1:]
+CONTEXT_NAME = "om2CurveBrushContext"
 CONTEXT_TOOL_NAME = "c" + CurveBrushTool.__name__[1:]
 
 # Initialize the plug-in

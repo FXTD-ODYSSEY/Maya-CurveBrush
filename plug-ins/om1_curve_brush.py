@@ -14,10 +14,10 @@ cmds.file(f=1, new=1)
 
 if cmds.pluginInfo('om1_curve_brush',q=1,l=1):
     cmds.unloadPlugin('om1_curve_brush')
-cmds.loadPlugin(r"F:\repo\CMakeMaya\modules\Maya-CurveBrush\plug-ins\om1_curve_brush.py")
+cmds.loadPlugin("om1_curve_brush.py")
 
 cmds.circle(s=100)
-ctx = cmds.curveBrushContext()
+ctx = cmds.om1CurveBrushContext()
 cmds.setToolTo(ctx)
 """
 
@@ -225,7 +225,7 @@ class CanvasOverlay(QtWidgets.QWidget):
         self.start_pos = QtCore.QPoint()
         self.current_pos = QtCore.QPoint()
         self.is_press_B = False
-        self.is_press_alt = True
+        self.is_press_alt = False
         self.is_falloff_enabled = True
         self.color_data = defaultdict(dict)
         self.press_button = None
@@ -671,8 +671,8 @@ def try_run(name):
         raise
 
 
-CONTEXT_NAME = "c" + CurveBrushContext.__name__[1:]
-CONTEXT_TOOL_NAME = "c" + CurveBrushTool.__name__[1:]
+CONTEXT_NAME = "om1CurveBrushContext"
+CONTEXT_TOOL_NAME = "om1CurveBrushTool"
 
 # Initialize the script plug-in
 def initializePlugin(obj):

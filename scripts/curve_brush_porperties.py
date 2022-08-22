@@ -19,7 +19,6 @@ def curve_brush_properties():
     pm.setUITemplate("DefaultTemplate", pushTemplate=1)
     parent = str(pm.toolPropertyWindow(q=1, location=1))
     pm.setParent(parent)
-    # curctx=str(currentCtx())
     pm.columnLayout("curveBrush")
     pm.tabLayout("curveBrushTabs", childResizable=True)
     pm.columnLayout("curveBrushTab")
@@ -53,10 +52,6 @@ def curve_brush_properties():
     # Name the tabs; -tl does not allow tab labelling upon creation
     pm.tabLayout("curveBrushTabs", tl=("curveBrushTab", "Tool Defaults"), e=1)
     pm.setUITemplate(popTemplate=1)
-    curve_brush_callbacks(parent)
-
-
-def curve_brush_callbacks(parent):
 
     pm.setParent(parent)
     whichCtx = str(pm.currentCtx())
@@ -81,17 +76,16 @@ def curve_brush_values(toolName):
     icon = "pythonFamily.png"
     pm.mel.toolPropertySetCommon(toolName, icon, "")
     pm.frameLayout("curveBrushFrame", en=True, e=1, cl=False)
-    set_curve_brush_value(toolName)
-    pm.mel.toolPropertySelect("curveBrush")
 
-
-def set_curve_brush_value(toolName):
     pm.intSliderGrp(
         "curveBrushStrength", e=1, value=pm.curveBrushContext(toolName, q=1, strength=1)
     )
     pm.intSliderGrp(
         "curveBrushRadius", e=1, value=pm.curveBrushContext(toolName, q=1, radius=1)
     )
+
+    pm.mel.toolPropertySelect("curveBrush")
+
 
 def setup_mel():
     py2mel.py2melProc(curve_brush_properties, procName="curveBrushProperties")
