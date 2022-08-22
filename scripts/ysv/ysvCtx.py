@@ -186,7 +186,7 @@ class baseDraggerCtx:
 
     def prePress(self):
         try:
-            self.currCam = PyNode(modelPanel(getPanel(wf=1), q=1, cam=1))
+            self.currCam = PyNode(mel.getCurrentCamera())
             self.viewDir = self.currCam.viewDirection(space="world")
             self.eyePnt = self.currCam.getEyePoint(space="world")
             self.centerOfInterest = self.currCam.getWorldCenterOfInterest()

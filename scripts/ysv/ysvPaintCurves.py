@@ -273,7 +273,10 @@ class paintCtx(ysvCtx.baseDraggerCtx):
         ysvCtx.baseDraggerCtx.__init__(self, ctxName)
 
         # modelEditor(getPanel(wf=1), e=1, xray=1)
-        modelEditor(getPanel(wf=1), e=1, nurbsCurves=1)
+        for mp in getPanel(type="modelPanel"):
+            if modelEditor(mp, q=1, av=1):
+                modelEditor(mp, e=1, nurbsCurves=1)
+                break
 
         tmpGroupName = "CHistory_curves_gr"
         if not objExists(tmpGroupName):
@@ -646,6 +649,7 @@ class paintCtx(ysvCtx.baseDraggerCtx):
         elif self.lockEndCVsStartState:
             for crv in self.inViewCurves:
                 for cv in [crv.cv[0], crv.cv[-1]]:
+                    cv = str(cv)
                     setAttr(cv + ".xv", lock=1)
                     setAttr(cv + ".yv", lock=1)
                     setAttr(cv + ".zv", lock=1)
@@ -667,6 +671,7 @@ class paintCtx(ysvCtx.baseDraggerCtx):
             optionVar(iv=("ysvLockEndCVs", 0))
             for crv in self.inViewCurves:
                 for cv in [crv.cv[0], crv.cv[-1]]:
+                    cv = str(cv)
                     setAttr(cv + ".xv", lock=0)
                     setAttr(cv + ".yv", lock=0)
                     setAttr(cv + ".zv", lock=0)
@@ -741,6 +746,7 @@ class paintCtx(ysvCtx.baseDraggerCtx):
 
         for crv in self.inViewCurves:
             for cv in [crv.cv[0], crv.cv[-1]]:
+                cv = str(cv)
                 setAttr(cv + ".xv", lock=0)
                 setAttr(cv + ".yv", lock=0)
                 setAttr(cv + ".zv", lock=0)
