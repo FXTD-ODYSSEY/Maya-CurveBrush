@@ -81,6 +81,7 @@ class baseDraggerCtx:
             finalize=self.finalize,
             name=ctxName,
             cursor=curs,
+            image1="insertKnot.png",
             undoMode="step",
         )
 
@@ -90,94 +91,94 @@ class baseDraggerCtx:
 
     # -----------------------------------------------------------------------
     def noModsLMBOnPress(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def shiftLMBOnPress(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlLMBOnPress(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlShiftLMBOnPress(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlAltShiftLMBOnPress(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def noModsMMBOnPres(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def shiftMMBOnPress(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlMMBOnPress(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlShiftMMBOnPress(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlAltShiftMMBOnPress(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def noModsLMBOnDrag(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def shiftLMBOnDrag(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlLMBOnDrag(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlShiftLMBOnDrag(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlAltShiftLMBOnDrag(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def noModsMMBOnDrag(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def shiftMMBOnDrag(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlMMBOnDrag(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlShiftMMBOnDrag(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlAltShiftMMBOnDrag(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def noModsLMBOnRelease(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def shiftLMBOnRelease(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlLMBOnRelease(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlShiftLMBOnRelease(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlAltShiftLMBOnRelease(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def noModsMMBOnRelease(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def shiftMMBOnRelease(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlMMBOnRelease(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlShiftMMBOnRelease(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     def ctrlAltShiftMMBOnRelease(self):
-        assert False, "not implemented abstact method"
+        raise NotImplementedError
 
     # -----------------------------------------------------------------------
     def setCursorData(self, xScreen, yScreen):
