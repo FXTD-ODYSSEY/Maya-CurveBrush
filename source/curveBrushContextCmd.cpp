@@ -9,11 +9,6 @@
 //
 /////////////////////////////////////////////////////////////
 
-// #define kRadiusFlag "-r"
-// #define kRadiusFlagLong "-radius"
-// #define kStrengthFlag "-s"
-// #define kStrengthFlagLong "-strength"
-
 curveBrushContextCmd::curveBrushContextCmd() {}
 
 MPxContext *curveBrushContextCmd::makeObj()

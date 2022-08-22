@@ -1,36 +1,3 @@
-////////////////////////////////////////////////////////////////////////
-//
-// DESCRIPTION:
-//
-// Interactive tool to draw a helix. Uses OpenGL to draw a guideline for the helix.
-//
-// Produces the MEL commands: helixToolCmd and helixToolContext.
-//
-// This example takes the helix example one large step forward by wrapping the command in a context.
-// This allows you to drag out the region in which you want the helix drawn.
-// To use it, you must first execute the command "source helixTool".
-// This will create a new entry in the "Shelf1" tab of the tool shelf called "Helix Tool".
-// Click on the new icon, then move the cursor into the perspective window and drag out a cylinder
-// which defines the volume in which the helix will be generated.
-// This plug-in is an example of building a context around a command.
-//
-// To create a tool command:
-//
-//	(1) Create a tool command class.
-//		Same process as an MPxCommand except define 2 methods
-//		for interactive use: cancel and finalize.
-//		There is also an addition constructor MPxToolCommand(), which
-//		is called from your context when the command needs to be invoked.
-//
-//	(2) Define your context.
-//		This is accomplished by deriving off of MPxContext and overriding
-//		whatever methods you need.
-//
-//	(3) Create a command class to create your context.
-//		You will call this command in Maya to create and name a context.
-//
-////////////////////////////////////////////////////////////////////////
-
 #include "curveBrushContextTool.h"
 
 /////////////////////////////////////////////////////////////
@@ -53,7 +20,6 @@ MSyntax curveBrushTool::newSyntax()
 {
     MSyntax syntax;
 
-    // TODO(timmyliang) specific syntax for the tool command
     syntax.addFlag(kStrengthFlag, kStrengthFlagLong, MSyntax::kDouble);
     syntax.addFlag(kRadiusFlag, kRadiusFlagLong, MSyntax::kDouble);
     return syntax;
