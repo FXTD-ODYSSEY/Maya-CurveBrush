@@ -18,7 +18,7 @@ NURBS 曲线编辑笔刷，学习和探讨 Maya 笔刷开发的各种方式。
 
 mel 脚本会自动生成名为 `CurveBrush` 的工具架，每次启动都会自动生成
 
-![image.png](https://pic.rmb.bdstatic.com/bjh/fb71bf67a116e2c0cda241d8e046349f.jpeg)
+![image](https://user-images.githubusercontent.com/40897360/186061752-cf497009-a736-4e34-b212-4aaaca27315a.png)
 
 ## 使用说明
 
@@ -29,3 +29,4 @@ cpp 是 Maya C++ API 基于 Viewport 2.0 的绘制方案
 
 ## 使用视频
 
+https://user-images.githubusercontent.com/40897360/186061781-e86a2b1f-4b04-4351-808d-b33a489616fd.mp4
