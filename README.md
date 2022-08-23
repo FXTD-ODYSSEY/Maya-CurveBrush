@@ -21,7 +21,7 @@ All you need to do is pretty simple, follow the step below.
 
 then Maya will generate a `CurveBrush` Shelf.
 
-![image.png](https://pic.rmb.bdstatic.com/bjh/fb71bf67a116e2c0cda241d8e046349f.jpeg)
+![image](https://user-images.githubusercontent.com/40897360/186061752-cf497009-a736-4e34-b212-4aaaca27315a.png)
 
 ## Usage
 
@@ -31,5 +31,7 @@ om2 is OpenMaya 2.0 base on Viewport 2.0 paint solution
 cpp is Maya C++ API base on  Viewport 2.0 paint solution  
 
 ## Usage Video
+
+https://user-images.githubusercontent.com/40897360/186061781-e86a2b1f-4b04-4351-808d-b33a489616fd.mp4
 
 
