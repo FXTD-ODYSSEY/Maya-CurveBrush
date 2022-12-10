@@ -20,6 +20,8 @@ MPxContext *curveBrushContextCmd::makeObj()
 {
     mContext = new curveBrushContext();
     return mContext;
+    //mContext = std::make_shared<curveBrushContext>(new curveBrushContext);
+    //return mContext.get();
 }
 
 void *curveBrushContextCmd::creator()
@@ -70,11 +72,11 @@ MStatus curveBrushContextCmd::doQueryFlags()
 
     if (argData.isFlagSet(kStrengthFlag))
     {
-        setResult((double)mContext->mBrushConfig.strength());
+        setResult(static_cast<double>(mContext->mBrushConfig.strength()));
     }
     if (argData.isFlagSet(kRadiusFlag))
     {
-        setResult((double)mContext->mBrushConfig.size());
+        setResult(static_cast<double>(mContext->mBrushConfig.size()));
     }
 
     return MS::kSuccess;

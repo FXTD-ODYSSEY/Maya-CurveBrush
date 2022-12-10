@@ -15,6 +15,7 @@ public:
 
 protected:
     curveBrushContext *mContext;
+    //std::shared_ptr<curveBrushContext> mContext;
 };
 
 #endif
