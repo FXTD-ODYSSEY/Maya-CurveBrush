@@ -68,8 +68,7 @@ private:
     {
         kNormal,
         kBrushSize
-    };
-    DragMode eDragMode;
+    } eDragMode;
     MPoint mBrushCenterScreenPoint;
     bool bInStroke;
     bool bFalloffMode;
