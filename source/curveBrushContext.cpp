@@ -181,7 +181,7 @@ MStatus curveBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &
                 auto distance = (mBrushCenterScreenPoint - screenPoint).length();
                 auto field = 1 - distance / radius;
                 // NOTE(timmyliang): transparent
-                colorArray.append(distance > radius ? MColor(0.04f) : MColor(0.75f, .55f, .15f)* field);
+                colorArray.append(distance > radius ? MColor(0.1f) : MColor(0.9f, .55f, .15f)* field);
             }
 
             drawMgr.setLineWidth(10.0f);
