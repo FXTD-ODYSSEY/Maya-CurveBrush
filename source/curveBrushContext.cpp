@@ -203,6 +203,7 @@ MStatus curveBrushContext::doEnterRegion(MEvent &)
 }
 
 void curveBrushContext::getClassName(MString &name) const
+// Set current Context mel attribute panel as calling "curveBrushProperties.mel, curveBrushValues.mel"
 {
     name.set("curveBrush");
 }
