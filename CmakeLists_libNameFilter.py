@@ -17,7 +17,7 @@ class CmakeMayaBuildPath (object):
     def generateLibFileName (cls, dirPath):
         for fileName in os.listdir(dirPath):
             tempFilePath = os.path.join(dirPath, fileName)
-            if (not os.path.isdir(tempFilePath)) and (fileName.lower().endswith("lib")):
+            if (not os.path.isdir(tempFilePath)) and (fileName.lower().endswith(".lib")):
                 yield fileName
 
 
