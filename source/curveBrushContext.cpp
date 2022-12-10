@@ -136,7 +136,7 @@ MStatus curveBrushContext::doDrag(MEvent &event, MHWRender::MUIDrawManager &draw
         view.viewToWorld(currentPosX, currentPosY, currNearPos, currFarPos);
         view.viewToWorld(startPosX, startPosY, startFarPos, startFarPos);
         // NOTE(timmyliang): use tool command for undo
-        curveBrushTool *cmd = (curveBrushTool *)newToolCommand();
+        curveBrushTool* cmd = static_cast<curveBrushTool*> (newToolCommand());
         cmd->setStrength(mBrushConfig.strength());
         cmd->setRadius(mBrushConfig.size());
         cmd->setMoveVector((currFarPos - startFarPos).normal());
@@ -156,7 +156,7 @@ MStatus curveBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &
     short x, y;
     event.getPosition(x, y);
     mBrushCenterScreenPoint = MPoint(x, y);
-    auto radius = mBrushConfig.size();
+    float &&radius = mBrushConfig.size();
 
     drawMgr.beginDrawable();
     if (bFalloffMode)
@@ -166,7 +166,7 @@ MStatus curveBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &
             MPointArray pointArray;
             MColorArray colorArray;
             MFnNurbsCurve curveFn(objDagPathArray[index]);
-            unsigned int segmentCount = 100;
+            unsigned int &&segmentCount = 100;
             for (unsigned int pointIndex = 0; pointIndex < segmentCount; ++pointIndex)
             {
                 MPoint point;
@@ -181,10 +181,10 @@ MStatus curveBrushContext::doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &
                 auto distance = (mBrushCenterScreenPoint - screenPoint).length();
                 auto field = 1 - distance / radius;
                 // NOTE(timmyliang): transparent
-                colorArray.append(distance > radius ? MColor(0.f) : MColor(field, field, field));
+                colorArray.append(distance > radius ? MColor(0.04f) : MColor(0.75f, .55f, .15f)* field);
             }
 
-            drawMgr.setLineWidth(12.0f);
+            drawMgr.setLineWidth(10.0f);
             drawMgr.mesh(MHWRender::MUIDrawManager::kLineStrip, pointArray, NULL, &colorArray);
         }
     }

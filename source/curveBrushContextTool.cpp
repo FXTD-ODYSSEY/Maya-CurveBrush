@@ -62,8 +62,12 @@ MStatus curveBrushTool::parseArgs(const MArgList &args)
 MStatus curveBrushTool::redoIt()
 {
 
-    MVector offsetVector = moveVector * 0.002 * strength;
     M3dView view = M3dView::active3dView();
+    int &&viewW = view.portWidth();
+    int &&viewH = view.portHeight();
+    auto speedFac = sqrt(viewW * viewW + viewH * viewH);
+    MVector offsetVector = moveVector * (radius / speedFac) * 0.01 * strength;
+
 
     // NOTE(timmyliang): move curves cv in radius
     short x_pos, y_pos;
@@ -77,9 +81,11 @@ MStatus curveBrushTool::redoIt()
             int cvIndex = cvIter.index();
             curvePointMap[index][cvIndex] = pos;
             view.worldToView(pos, x_pos, y_pos);
-            if ((startPoint - MPoint(x_pos, y_pos)).length() < radius)
+            auto distance = (startPoint - MPoint(x_pos, y_pos)).length();
+            if (distance < radius)
             {
-                offsetMap[cvIndex] = pos + offsetVector;
+                auto field = 1 - distance / radius;
+                offsetMap[cvIndex] = pos + offsetVector * field;
             }
         }
         for (const auto &it : offsetMap)
@@ -103,7 +109,9 @@ MStatus curveBrushTool::undoIt()
             MPoint pos = it.second;
             curveFn.setCV(cvIndex, pos, MSpace::kWorld);
         }
+        curveFn.updateCurve();
     }
+    
 
     return MStatus::kSuccess;
 }
@@ -114,6 +122,7 @@ bool curveBrushTool::isUndoable() const
 //     Set this command to be undoable.
 //
 {
+    if (curvePointMap.size()<1) return false;
     return true;
 }
 
