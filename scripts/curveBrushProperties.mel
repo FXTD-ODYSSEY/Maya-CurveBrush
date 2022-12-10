@@ -1,0 +1,89 @@
+global proc curveBrushProperties ()
+//
+//	Procedure Name:
+//		curveBrushProperties
+//
+//	Description:
+//		layout of tool property sheet
+//
+//	Input Arguments:
+//		None.
+//
+//	Return Value:
+//		None.
+//
+{
+    setUITemplate -pushTemplate DefaultTemplate;
+
+    string $parent = `toolPropertyWindow -q -location`;
+    setParent $parent;
+    string $curctx = `currentCtx`;
+
+    columnLayout "curveBrush";
+        tabLayout -childResizable true "curveBrushTabs";
+            columnLayout curveBrushTab;
+                frameLayout -cll true -cl false -l "curveBrush Options" "curveBrushFrame";
+                    columnLayout "curveBrushOptions";
+                        separator -style "none";
+
+                        intSliderGrp
+                            -field 1
+                            -label "Brush Strength"
+                            -minValue 10
+                            -maxValue 500
+                            -value 200
+                            -step 10
+                            "curveBrushStrength";
+
+                        intSliderGrp
+                            -field 1
+                            -label "Brush Radius"
+                            -minValue 10
+                            -maxValue 500
+                            -value 150
+                            -step 10
+                            "curveBrushRadius";
+
+                    setParent ..; // curveBrushOptions
+                setParent ..; // curveBrushFrame
+            setParent ..; // curveBrushTab
+        setParent ..; // curveBrushTabs
+    setParent ..; // curveBrush
+
+    // Name the tabs; -tl does not allow tab labelling upon creation
+    tabLayout -e -tl "curveBrushTab" "Curve Brush Defaults" "curveBrushTabs";
+
+    setUITemplate -popTemplate;
+
+    curveBrushSetCallbacks($parent);
+
+}
+
+
+global proc curveBrushSetCallbacks(string $parent)
+//
+//	Procedure Name:
+//		curveBrushSetCallbacks
+//
+//	Description:
+//		associate control events with callbacks
+//
+//	Input Arguments:
+//		parent name.
+//
+//	Return Value:
+//		None.
+//
+{
+    setParent	$parent;
+    string		$whichCtx = `currentCtx`;
+
+    intSliderGrp -e
+        -cc ("curveBrushContext -e -strength #1 `currentCtx`")
+        "curveBrushStrength";
+
+    intSliderGrp -e
+        -cc ("curveBrushContext -e -radius #1 `currentCtx`")
+        "curveBrushRadius";
+
+}
