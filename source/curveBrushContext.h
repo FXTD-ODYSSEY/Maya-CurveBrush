@@ -21,7 +21,7 @@ const char helpString[] = "Click and drag to sculpt curve";
 
 struct BrushConfig
 {
-    BrushConfig() : fSize(50.0f), fStrength(200.0f){};
+    BrushConfig() : fSize(150.0f), fStrength(200.0f){};
     float size() const { return fSize; }
     void setSize(float value) { fSize = value > 0 ? value : 0; }
     float strength() const { return fStrength; }
