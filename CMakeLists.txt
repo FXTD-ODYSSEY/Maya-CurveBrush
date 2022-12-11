@@ -72,6 +72,6 @@ target_link_libraries(${PROJECT_NAME} ${MAYA_LIBRARIES})
 set_target_properties(
     ${PROJECT_NAME}
     PROPERTIES 
-        OUTPUT_NAME "CurveBrush"
+        OUTPUT_NAME "curveBrush"
         SUFFIX ".mll"
 )
