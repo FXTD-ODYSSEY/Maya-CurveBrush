@@ -60,7 +60,7 @@ foreach(MAYA_LIB_NAME OpenMaya OpenMayaAnim OpenMayaFX OpenMayaRender OpenMayaUI
 	set(MAYA_LIBRARIES ${MAYA_LIBRARIES} ${MAYA_${MAYA_LIB_NAME}_LIBRARY}) #append a lib to MAYA_LIBRARIES list
 endforeach()
 #Find Qt individual libs
-foreach(QT_LIB_NAME Qt53DAnimation Qt53DCore Qt53DExtras Qt53DInput Qt53DLogic Qt53DQuick Qt53DQuickAnimation Qt53DQuickExtras Qt53DQuickInput Qt53DQuickRender Qt53DQuickScene2D Qt53DRender Qt5AxBase Qt5AxContainer Qt5AxServer Qt5Bluetooth Qt5Concurrent Qt5Core Qt5DBus Qt5Gamepad Qt5Gui Qt5Help Qt5Location Qt5Multimedia Qt5MultimediaQuick Qt5MultimediaWidgets Qt5Network Qt5Nfc Qt5OpenGL Qt5OpenGLExtensions Qt5Positioning Qt5PositioningQuick Qt5PrintSupport Qt5Qml Qt5QmlModels Qt5QmlWorkerScript Qt5Quick Qt5QuickControls2 Qt5QuickParticles Qt5QuickShapes Qt5QuickTemplates2 Qt5QuickTest Qt5QuickWidgets Qt5RemoteObjects Qt5Scxml Qt5Sensors Qt5SerialBus Qt5SerialPort Qt5Sql Qt5Svg Qt5Test Qt5TextToSpeech Qt5ThemeSupport Qt5UiTools Qt5WebChannel Qt5WebEngine Qt5WebEngineCore Qt5WebEngineWidgets Qt5WebSockets Qt5WebView Qt5Widgets Qt5WindowsUIAutomationSupport Qt5WinExtras Qt5Xml Qt5XmlPatterns)
+foreach(QT_LIB_NAME Qt53DAnimation Qt53DCore Qt53DExtras Qt53DInput Qt53DLogic Qt53DQuick Qt53DQuickAnimation Qt53DQuickExtras Qt53DQuickInput Qt53DQuickRender Qt53DQuickScene2D Qt53DRender Qt5AxBase Qt5AxContainer Qt5AxServer Qt5Bluetooth Qt5Concurrent Qt5Core Qt5DBus Qt5Gamepad Qt5Gui Qt5Help Qt5Location Qt5Nfc Qt5OpenGL Qt5OpenGLExtensions Qt5Positioning Qt5PositioningQuick Qt5PrintSupport)
 	find_library(MAYA_${QT_LIB_NAME}_LIBRARY NAMES ${QT_LIB_NAME} PATHS ${MAYA_LIBRARY_DIR} NO_DEFAULT_PATH)
 	set(MAYA_LIBRARIES ${MAYA_LIBRARIES} ${MAYA_${QT_LIB_NAME}_LIBRARY}) #append a lib to MAYA_LIBRARIES list
 endforeach()
