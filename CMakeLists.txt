@@ -2,17 +2,16 @@ cmake_minimum_required(VERSION 3.5)
 
 # set the project name and version
 project(CurveBrush LANGUAGES CXX VERSION 1.0 DESCRIPTION "MayaBrushForSplineCurve")
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/build)
 
 # set maya path
-set(MayaPath "C:/Program Files/Autodesk/Maya2022")
+set(MayaPath "$ENV{AutodeskDirPath}/Maya$ENV{MayaVersion}")
 set(Maya_Head "${MayaPath}/include/")
 set(Maya_Qt_Head "${MayaPath}/include/qt5")
 set(MAYA_LIBRARY_DIR "${MayaPath}/lib")
 
 # Set output dir
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/plugin_compiled)
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/plugin_compiled)
+set(EXECUTABLE_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/plug-ins/$ENV{MayaVersion}")
+set(LIBRARY_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/plug-ins/$ENV{MayaVersion}")
 
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 11)
