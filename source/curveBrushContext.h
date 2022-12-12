@@ -48,16 +48,16 @@ public:
 
     MStatus doPress(MEvent &event,
                     MHWRender::MUIDrawManager &drawManager,
-                    const MHWRender::MFrameContext &context);
+                    const MHWRender::MFrameContext &context) override;
     MStatus doDrag(MEvent &event,
                    MHWRender::MUIDrawManager &drawManager,
-                   const MHWRender::MFrameContext &context);
+                   const MHWRender::MFrameContext &context) override;
     MStatus doRelease(MEvent &event,
                       MHWRender::MUIDrawManager &drawManager,
-                      const MHWRender::MFrameContext &context);
+                      const MHWRender::MFrameContext &context) override;
 
-    MStatus doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context);
-    bool eventFilter(QObject *object, QEvent *event);
+    MStatus doPtrMoved(MEvent &event, MHWRender::MUIDrawManager &drawMgr, const MHWRender::MFrameContext &context) override;
+    bool eventFilter(QObject *object, QEvent *event) override;
     
     BrushConfig mBrushConfig;
 
