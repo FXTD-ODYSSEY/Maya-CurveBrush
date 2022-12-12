@@ -21,13 +21,13 @@
 curveBrushContext::curveBrushContext()
 {
     bFalloffMode = true;
-    setTitleString("Curve Brush Tool");
+    this->setTitleString("Curve Brush Tool");
 
-    setCursor(MCursor::defaultCursor);
+    this->setCursor(MCursor::defaultCursor);
 
     // Tell the context which XPM to use so the tool can properly
     // be a candidate for the 6th position on the mini-bar.
-    setImage("paintFXtoCurve.png", MPxContext::kImage1);
+    this->setImage("paintFXtoCurve.png", this->kImage1);
 }
 
 void curveBrushContext::toolOnSetup(MEvent &event)
@@ -61,12 +61,12 @@ void curveBrushContext::toolOffCleanup()
 
 bool curveBrushContext::eventFilter(QObject *object, QEvent *event)
 {
-    if (QKeyEvent *e = dynamic_cast<QKeyEvent *>(event))
+    if (const QKeyEvent *const keyEvent = dynamic_cast<const QKeyEvent *>(event))
     {
-        auto lEventEnumType = e->type();
+        auto const lEventEnumType = keyEvent->type();
         if (lEventEnumType == QEvent::KeyPress)
         {
-            if (e->key() == Qt::Key_B)
+            if (keyEvent->key() == Qt::Key_B)
                 eDragMode = kBrushSize;
         }
         else if (lEventEnumType == QEvent::KeyRelease)
