@@ -62,11 +62,11 @@ MStatus curveBrushTool::parseArgs(const MArgList &args)
 MStatus curveBrushTool::redoIt()
 {
 
-    M3dView view = M3dView::active3dView();
+    M3dView &&view = M3dView::active3dView();
     int &&viewW = view.portWidth();
     int &&viewH = view.portHeight();
-    auto speedFac = sqrt(viewW * viewW + viewH * viewH);
-    MVector offsetVector = moveVector * (radius / speedFac) * 0.01 * strength;
+    auto const &&speedFac = sqrt(viewW * viewW + viewH * viewH);
+    MVector const offsetVector = moveVector * (radius / speedFac) * 0.01 * strength;
 
 
     // NOTE(timmyliang): move curves cv in radius
@@ -81,10 +81,10 @@ MStatus curveBrushTool::redoIt()
             int cvIndex = cvIter.index();
             curvePointMap[index][cvIndex] = pos;
             view.worldToView(pos, x_pos, y_pos);
-            auto distance = (startPoint - MPoint(x_pos, y_pos)).length();
+            double const distance = (startPoint - MPoint(x_pos, y_pos)).length();
             if (distance < radius)
             {
-                auto field = 1 - distance / radius;
+                const double &&field = 1 - distance / radius;
                 offsetMap[cvIndex] = pos + offsetVector * field;
             }
         }
@@ -105,8 +105,8 @@ MStatus curveBrushTool::undoIt()
         MFnNurbsCurve curveFn(dagPathArray[kv.first]);
         for (const auto &it : kv.second)
         {
-            int cvIndex = it.first;
-            MPoint pos = it.second;
+            int const cvIndex = it.first;
+            MPoint const pos = it.second;
             curveFn.setCV(cvIndex, pos, MSpace::kWorld);
         }
         curveFn.updateCurve();
