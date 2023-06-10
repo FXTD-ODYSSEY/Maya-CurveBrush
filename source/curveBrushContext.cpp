@@ -18,16 +18,14 @@
 //
 /////////////////////////////////////////////////////////////
 
-curveBrushContext::curveBrushContext()
+curveBrushContext::curveBrushContext() : bFalloffMode(true)
 {
-    bFalloffMode = true;
-    this->setTitleString("Curve Brush Tool");
-
-    this->setCursor(MCursor::defaultCursor);
+    setTitleString("Curve Brush Tool");
+    setCursor(MCursor::defaultCursor);
 
     // Tell the context which XPM to use so the tool can properly
     // be a candidate for the 6th position on the mini-bar.
-    this->setImage("paintFXtoCurve.png", this->kImage1);
+    setImage("paintFXtoCurve.png", kImage1);
 }
 
 void curveBrushContext::toolOnSetup(MEvent &event)
